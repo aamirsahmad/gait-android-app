@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Gait Analyzer</string>
+    <string name="action_logout">logout</string>
+</resources>
