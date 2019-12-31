@@ -6,6 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.net.URL;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -18,22 +19,22 @@ import okio.ByteString;
 
 public final class WebSocketEcho extends WebSocketListener implements Runnable {
     private final Broker broker2;
-    private String ip;
     private String userID;
     private Broker broker;
     private String name;
+    private URL url;
     private final String TAG = "WebSocketEcho";
     int messagesWebSocket = 0;
     UUID uuid = UUID.randomUUID();
     String randomUUIDString = uuid.toString();
 
-    public WebSocketEcho(String name, Broker broker, Broker broker2, String userID,  String ip)
+    public WebSocketEcho(String name, Broker broker, Broker broker2, String userID, URL url)
     {
         this.name = name;
         this.broker = broker;
         this.broker2 = broker2;
         this.userID = userID;
-        this.ip = ip;
+        this.url = url;
     }
 
     @Override
@@ -42,16 +43,11 @@ public final class WebSocketEcho extends WebSocketListener implements Runnable {
         OkHttpClient client = new OkHttpClient.Builder()
                 .readTimeout(0,  TimeUnit.MILLISECONDS)
                 .build();
-
-        String socketURL = "ws://gait-poc.herokuapp.com/gait";
-        if(ip.length() != 0){
-//            System.out.println("IP ADDRESS WAS NOT EMPTY: " + ip.length());
-            socketURL = "ws://" + ip + "/gait";
-        }
+        Log.d(TAG, url.toString());
         Request request = new Request.Builder()
 //                .url("ws://echo.websocket.org")
 //                .url("ws://10.0.0.133:8000/gait")
-                .url(socketURL)
+                .url(url)
                 .build();
         client.newWebSocket(request, this);
 
