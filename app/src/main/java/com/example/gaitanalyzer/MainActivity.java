@@ -12,9 +12,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,11 +26,12 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton;
+import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener2 {
 
     SensorManager manager;
-    Button buttonStart;
-    Button buttonStop;
     TextView outputPath;
     TextView serverReply;
     TextView log;
@@ -64,10 +63,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Defaults defaults;
     SharedPreferences sharedPreferences;
 
+
+    //    @BindView(R.id.play_pause)
+    MaterialPlayPauseButton recordingButton;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+//        ButterKnife.bind(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -76,11 +81,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         manager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
-        buttonStart = findViewById(R.id.buttonStart);
-        buttonStop = findViewById(R.id.buttonStop);
         outputPath = (TextView) findViewById(R.id.outputPath);
         serverReply = (TextView) findViewById(R.id.serverReply);
         log = (TextView) findViewById(R.id.log);
+        recordingButton = findViewById(R.id.play_pause);
 
         // Preferences
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -88,25 +92,37 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
 
-        buttonStart.setOnTouchListener(new View.OnTouchListener() {
+        recordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                buttonStart.setEnabled(false);
-                buttonStop.setEnabled(true);
-
-                Log.d(TAG, "Writing to " + getStorageDir());
-                try {
-                    String path = getStorageDir() + "/sensors_" + System.currentTimeMillis() + ".csv";
-                    writer = new FileWriter(new File(path));
-                    writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
-
-                    outputPath.setText(path);
-                } catch (IOException e) {
-                    e.printStackTrace();
+            public void onClick(View view) {
+                MaterialPlayPauseDrawable.State currentState = recordingButton.getState();
+                if (currentState == MaterialPlayPauseDrawable.State.Play) {
+                    currentState = MaterialPlayPauseDrawable.State.Pause;
+                    startRecording();
+                } else {
+                    currentState = MaterialPlayPauseDrawable.State.Play;
+                    stopRecording();
                 }
+                recordingButton.setState(currentState);
 
-                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), samplingRate);
-                samplingIndex = 0;
+            }
+        });
+    }
+
+    private void startRecording() {
+        Log.d(TAG, "Writing to " + getStorageDir());
+        try {
+            String path = getStorageDir() + "/sensors_" + System.currentTimeMillis() + ".csv";
+            writer = new FileWriter(new File(path));
+            writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
+
+            outputPath.setText(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), samplingRate);
+        samplingIndex = 0;
 //                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), 0);
 //                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED), 0);
 //                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), 0);
@@ -114,46 +130,35 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), 0);
 //                manager.registerListener(MainActivity.this, manager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR), 0);
 
-                isRunning = true;
-                try {
-                    broker = new Broker();
-                    broker2 = new Broker();
-                    threadPool = Executors.newFixedThreadPool(1);
-                    // stream data if in streaming mode
-                    if (stream == true) {
-                        String url = "http://" + ip + ":" + port + "/gait";
-                        socket = new WebSocketEcho("1", broker, broker2, userId, new URL(url));
-                        threadPool.execute(socket);
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-//                echoText(broker2);
-                return true;
+        isRunning = true;
+        try {
+            broker = new Broker();
+            broker2 = new Broker();
+            threadPool = Executors.newFixedThreadPool(1);
+            // stream data if in streaming mode
+            if (stream == true) {
+                String url = "http://" + ip + ":" + port + "/gait";
+                socket = new WebSocketEcho("1", broker, broker2, userId, new URL(url));
+                threadPool.execute(socket);
             }
-        });
-        buttonStop.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                buttonStart.setEnabled(true);
-                buttonStop.setEnabled(false);
-                isRunning = false;
-                manager.flush(MainActivity.this);
-                manager.unregisterListener(MainActivity.this);
-                broker.continueProducing = Boolean.FALSE;
-                lastTime = 0;
-                closePool();
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return true;
-            }
-        });
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
+    private void stopRecording() {
+        isRunning = false;
+        manager.flush(MainActivity.this);
+        manager.unregisterListener(MainActivity.this);
+        broker.continueProducing = Boolean.FALSE;
+        lastTime = 0;
+        closePool();
+        try {
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void refreshPreferences() {

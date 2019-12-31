@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="Gradle: me.zhanghai.android.materialplaypausedrawable:library:1.0.0@aar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-2/files-2.1/fa23ed1cef59f50d1aab2fe6e88bdd84/jetified-library-1.0.0/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-2/files-2.1/fa23ed1cef59f50d1aab2fe6e88bdd84/jetified-library-1.0.0/res" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/me.zhanghai.android.materialplaypausedrawable/library/1.0.0/3f9f03ec022ddb7cd26333846b91f2bf758b7963/library-1.0.0-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/me.zhanghai.android.materialplaypausedrawable/library/1.0.0/677ae21471c2667ba0dfac32df76ed4603025e6d/library-1.0.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

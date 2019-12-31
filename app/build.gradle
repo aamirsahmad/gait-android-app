@@ -5,7 +5,7 @@ android {
     buildToolsVersion "29.0.2"
     defaultConfig {
         applicationId "com.example.gaitanalyzer"
-        minSdkVersion 19
+        minSdkVersion 23
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
@@ -30,5 +30,5 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1'
     implementation 'com.squareup.okhttp3:okhttp:3.10.0'
     implementation 'com.google.android.material:material:1.0.0'
-
+    implementation 'me.zhanghai.android.materialplaypausedrawable:library:1.0.0'
 }
