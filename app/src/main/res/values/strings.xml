@@ -1,4 +1,35 @@
 <resources>
     <string name="app_name">Gait Analyzer</string>
     <string name="action_logout">logout</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Preference Titles -->
+    <string name="connection_header">Connection</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="ip_title">IP Address</string>
+    <string name="port_title">Port Number</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="stream_title">Stream to cloud</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails
+    </string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="sensor_header">Sensor</string>
+    <string name="sensor_refresh_rate_title">Refresh Rate</string>
+    <string name="user_header">User information</string>
+    <string name="user_id_title">User ID</string>
+
+    <!-- Defaults-->
+    <string name="refresh_rate">52</string>
+    <string name="hostname">gait-poc.herokuapp.com</string>
+    <string name="port">80</string>
+    <string name="stream">false</string>
+    <string name="userId">unknown</string>
 </resources>
