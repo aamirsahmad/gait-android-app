@@ -31,4 +31,5 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.10.0'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'me.zhanghai.android.materialplaypausedrawable:library:1.0.0'
+    implementation 'com.adityak:browsemyfiles:1.9'
 }

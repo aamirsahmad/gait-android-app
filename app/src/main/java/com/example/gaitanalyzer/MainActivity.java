@@ -7,6 +7,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
@@ -14,22 +15,34 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import androidx.preference.PreferenceManager;
+
+import com.aditya.filebrowser.Constants;
+import com.aditya.filebrowser.FileChooser;
+import com.aditya.filebrowser.FolderChooser;
+import com.aditya.filebrowser.utils.UIUtils;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton;
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
 
+
 public class MainActivity extends AppCompatActivity implements SensorEventListener2 {
+    static int PICK_FILE_REQUEST = 1;
 
     SensorManager manager;
     TextView outputPath;
@@ -39,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     final String TAG = "SensorLog";
     FileWriter writer;
     WebSocketEcho socket;
+    File reterivedFile;
 
     private Broker broker;
     private Broker broker2;
@@ -111,6 +125,41 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void startRecording() {
         Log.d(TAG, "Writing to " + getStorageDir());
+//        try {
+//            if(ExternalStorageUtil.isExternalStorageMounted()) {
+//
+//                // Check whether this app has write external storage permission or not.
+//                int writeExternalStoragePermission = ContextCompat.checkSelfPermission(ExternalStorageActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+//                // If do not grant write external storage permission.
+//                if(writeExternalStoragePermission!= PackageManager.PERMISSION_GRANTED)
+//                {
+//                    // Request user to grant write external storage permission.
+//                    ActivityCompat.requestPermissions(ExternalStorageActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE_WRITE_EXTERNAL_STORAGE_PERMISSION);
+//                }else {
+//
+//                    // Save email_public.txt file to /storage/emulated/0/DCIM folder
+//                    String publicDcimDirPath = ExternalStorageUtil.getPublicExternalStorageBaseDir(Environment.DIRECTORY_DCIM);
+//
+//                    File newFile = new File(publicDcimDirPath, "email_public.txt");
+//
+//                    FileWriter fw = new FileWriter(newFile);
+//
+//                    fw.write(emailEditor.getText().toString());
+//
+//                    fw.flush();
+//
+//                    fw.close();
+//
+//                    Toast.makeText(getApplicationContext(), "Save to public external storage success. File Path " + newFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+//                }
+//            }
+//
+//        }catch (Exception ex)
+//        {
+//            Log.e(LOG_TAG_EXTERNAL_STORAGE, ex.getMessage(), ex);
+//
+//            Toast.makeText(getApplicationContext(), "Save to public external storage failed. Error message is " + ex.getMessage(), Toast.LENGTH_LONG).show();
+//        }
         try {
             String path = getStorageDir() + "/sensors_" + System.currentTimeMillis() + ".csv";
             writer = new FileWriter(new File(path));
@@ -174,12 +223,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //
 //    }
 
+
     @Override
     protected void onResume() {
         super.onResume();
         defaults = new Defaults(this);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
+        if(reterivedFile != null){
+            Intent intentShareFile = new Intent(Intent.ACTION_SEND);
+
+            intentShareFile.setType("text/csv");
+            intentShareFile.putExtra(Intent.EXTRA_STREAM,
+                    Uri.parse("content://"+reterivedFile.getAbsolutePath()));
+
+            //if you need
+            this.grantUriPermission(getApplicationContext().getPackageName(), Uri.fromFile(reterivedFile), intentShareFile.FLAG_GRANT_WRITE_URI_PERMISSION | intentShareFile.FLAG_GRANT_READ_URI_PERMISSION);
+
+            sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED,Uri.parse(reterivedFile.getAbsolutePath())));
+
+            this.startActivity(Intent.createChooser(intentShareFile, reterivedFile.getName()));
+
+            reterivedFile = null;
+        }
     }
 
     void closePool() {
@@ -345,12 +411,40 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return true;
     }
 
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.m1) {
+        if (item.getItemId() == R.id.m2) {
             Intent intent = new Intent(this, SettingsActivity.class);
             this.startActivity(intent);
         }
+        else if (item.getItemId() == R.id.m1) {
+            Intent i = new Intent(this, FileChooserMod.class);
+            i.putExtra(Constants.INITIAL_DIRECTORY, new File(getStorageDir()).getAbsolutePath());
+
+            i.putExtra(Constants.ALLOWED_FILE_EXTENSIONS, "csv;");
+
+            i.putExtra(Constants.SELECTION_MODE, Constants.SELECTION_MODES.SINGLE_SELECTION.ordinal());
+            startActivityForResult(i, PICK_FILE_REQUEST);
+
+        }
         return true;
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_FILE_REQUEST && data!=null) {
+            if (resultCode == RESULT_OK) {
+                Uri f = data.getData();
+                File file = new File(f.getPath());
+                reterivedFile = file;
+
+            }
+        }
+    }
+
+
 }

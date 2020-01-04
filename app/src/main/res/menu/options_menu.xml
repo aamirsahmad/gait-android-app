@@ -2,6 +2,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:title="Settings"
+        android:title="File Broswer"
         android:id="@+id/m1" />
+    <item
+        android:title="Settings"
+        android:id="@+id/m2" />
+
 </menu>
