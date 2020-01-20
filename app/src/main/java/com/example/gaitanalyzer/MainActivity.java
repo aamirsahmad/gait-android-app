@@ -8,6 +8,8 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
@@ -17,6 +19,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import java.io.File;
@@ -63,13 +66,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     Defaults defaults;
     SharedPreferences sharedPreferences;
 
-
-    //    @BindView(R.id.play_pause)
     MaterialPlayPauseButton recordingButton;
+
+    // WakeLock
+    PowerManager powerManager;
+    PowerManager.WakeLock wakeLock;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                "GaitAnalyzer::SensorsWakeLockTag");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 //        ButterKnife.bind(this);
@@ -99,9 +108,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if (currentState == MaterialPlayPauseDrawable.State.Play) {
                     currentState = MaterialPlayPauseDrawable.State.Pause;
                     startRecording();
+                    startService(view);
+
+                    ExampleRunnable runnable = new ExampleRunnable();
+                    new Thread(runnable).start();
                 } else {
                     currentState = MaterialPlayPauseDrawable.State.Play;
                     stopRecording();
+                    stopService(view);
                 }
                 recordingButton.setState(currentState);
 
@@ -110,6 +124,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void startRecording() {
+        wakeLock.acquire();
+
         Log.d(TAG, "Writing to " + getStorageDir());
         try {
             String path = getStorageDir() + "/sensors_" + System.currentTimeMillis() + ".csv";
@@ -148,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void stopRecording() {
+        wakeLock.release();
         isRunning = false;
         manager.flush(MainActivity.this);
         manager.unregisterListener(MainActivity.this);
@@ -314,9 +331,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
          * Total data-points collected:
          * Current sampling frequency:
          */
-        int frequency = getFrequency(collectionRateMs);
+        int frequency = Util.getFrequency(collectionRateMs);
         StringBuilder sb = new StringBuilder();
-        sb.append(refreshRate + ", " + ip + ", " + port + ", " + stream + ", " + ip + ", " + userId + "\n\n");
+        sb.append(refreshRate + ", " + ip + ", " + port + ", " + stream + ", " + ip + ", " + userId + " " + data + "\n\n");
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
         sb.append("Current broker queue size: " + queueSize + "\n\n");
         sb.append("Total messages (chunks) sent: " + messages + "\n\n");
@@ -327,12 +344,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
-    private int getFrequency(int collectionRateMs) {
-        float seconds = (float) collectionRateMs / 1000;
-        float frequency = (float) 1 / seconds;
 
-        return (int) frequency;
-    }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
@@ -352,5 +364,122 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             this.startActivity(intent);
         }
         return true;
+    }
+
+    public void startService(View v) {
+        Intent serviceIntent = new Intent(this, AccelerometerService.class);
+        serviceIntent.putExtra("inputExtra", "true");
+
+        ContextCompat.startForegroundService(this, serviceIntent);
+    }
+
+    public void stopService(View v) {
+        Intent serviceIntent = new Intent(this, AccelerometerService.class);
+        stopService(serviceIntent);
+    }
+
+    private Handler handler = new Handler();
+    private String data;
+
+    class ExampleRunnable implements Runnable, SensorEventListener2 {
+
+        @Override
+        public void run() {
+            for (int i = 0; i < 5; i++) {
+
+                if (i == 4) {
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            data = "reached 4";
+                        }
+                    });
+                }
+
+                Log.d(TAG, "startThread " + i);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        public void onFlushCompleted(Sensor sensor) {
+
+        }
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (isRunning) {
+                try {
+                    switch (event.sensor.getType()) {
+                        case Sensor.TYPE_ACCELEROMETER:
+                            dataPointsCollected++;
+//                        String accData = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
+//                        long timeInMillis = (new Date()).getTime()
+//                                + (event.timestamp - System.currentTimeMillis()) / 1000000L;
+//                        long timeInMillis = (new Date().getTime() - SystemClock.elapsedRealtime()) * 1000000
+//                                + event.timestamp;
+//                        long timeNow = System.currentTimeMillis();
+                            long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
+                            if (lastTime == 0 || timeInMillis - lastTime >= collectionRateMs) {
+                                samplingIndex++;
+                                double vsum = Math.sqrt(
+                                        (event.values[0] * event.values[0])
+                                                + (event.values[1] * event.values[1])
+                                                + (event.values[2] * event.values[2])
+                                );
+
+                                lastTime = timeInMillis;
+                                Log.d(TAG, "date.getTime: " + timeInMillis);
+
+//                            String accData = String.format("%d, %d, %d, %f, %f, %f, %f", samplingIndex, userID, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
+                                String accData = String.format("%d, %s, %d, %f, %f, %f, %f", samplingIndex, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
+
+                                writer.write(accData + "\n");
+                                int socketMessage = -1;
+                                if (socket != null) {
+                                    socketMessage = socket.messagesWebSocket;
+                                }
+                                updateLog(log, accData, broker.getQueueSize(), dataPointsCollected, collectionRateMs, socketMessage);
+
+                                // ADD DATA TO BROKER
+                                if (stream == true) {
+                                    addData(accData, broker);
+                                }
+                            }
+
+                            break;
+//                    case Sensor.TYPE_GYROSCOPE_UNCALIBRATED:
+//                        writer.write(String.format("%d; GYRO_UN; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], event.values[4], event.values[5]));
+//                        break;
+//                    case Sensor.TYPE_GYROSCOPE:
+//                        writer.write(String.format("%d; GYRO; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
+//                        break;
+//                    case Sensor.TYPE_MAGNETIC_FIELD:
+//                        writer.write(String.format("%d; MAG; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
+//                        break;
+//                    case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED:
+//                        writer.write(String.format("%d; MAG_UN; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
+//                        break;
+//                    case Sensor.TYPE_ROTATION_VECTOR:
+//                        writer.write(String.format("%d; ROT; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], 0.f, 0.f));
+//                        break;
+//                    case Sensor.TYPE_GAME_ROTATION_VECTOR:
+//                        writer.write(String.format("%d; GAME_ROT; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], 0.f, 0.f));
+//                        break;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+        }
     }
 }
