@@ -14,7 +14,7 @@ import androidx.core.app.NotificationCompat;
 
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 
-public class AccelerometerService2 extends Service implements SensorEventListener2 {
+public class SensorService extends Service implements SensorEventListener2 {
 
     @Override
     public void onCreate() {
