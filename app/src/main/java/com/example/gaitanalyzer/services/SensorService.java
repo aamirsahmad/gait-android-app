@@ -6,10 +6,10 @@ import android.app.Service;
 import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener2;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -17,13 +17,20 @@ import androidx.core.app.NotificationCompat;
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.eventbus.MessageEvent;
-import com.example.gaitanalyzer.utils.TimeSeriesUtil;
 
 import org.greenrobot.eventbus.EventBus;
 
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 
-public class SensorService extends Service {
+public class SensorService extends Service implements SensorEventListener {
+
+    /**
+     * loging tag
+     */
+    private static final String TAG = SensorService.class.getSimpleName();
+
+    private SensorManager mSensorManager = null;
+
 
     @Override
     public void onCreate() {
@@ -32,6 +39,13 @@ public class SensorService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // get sensor manager on starting the service
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+
+        // todo : check from shared preferences which type of sensor to collect
+        int samplingRate = 0; // fastest possible
+        mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), samplingRate);
+
         String input = intent.getStringExtra("inputExtra");
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -44,21 +58,24 @@ public class SensorService extends Service {
                 .setContentIntent(pendingIntent)
                 .build();
 
-//        // send data to EventBus from Service thread
-//        EventBus.getDefault().post(new MessageEvent("Hello everyone!"));
-        Log.d("SensorService", "starting thread");
 
-        // send data to EventBus from a child thread of Service thread
-        ExampleRunnable exampleRunnable = new ExampleRunnable();
-        new Thread(exampleRunnable).start();
+//
+//        // send data to EventBus from a child thread of Service thread
+//        SensorListener exampleRunnable = new SensorListener();
+//        new Thread(exampleRunnable).start();
 
         startForeground(1, notification);
 
         return START_NOT_STICKY;
     }
 
+    public void showNotification() {
+
+    }
+
     @Override
     public void onDestroy() {
+        mSensorManager.unregisterListener(this);
         super.onDestroy();
     }
 
@@ -68,80 +85,20 @@ public class SensorService extends Service {
         return null;
     }
 
-    class ExampleRunnable implements Runnable, SensorEventListener2 {
-        private boolean isRunning = false;
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        // grab the values
+        StringBuilder sb = new StringBuilder();
+        for (float value : event.values)
+            sb.append(String.valueOf(value)).append(" | ");
 
-        String data = "";
-        @Override
-        public void run() {
+        Log.d(TAG, "received sensor valures are: " + sb.toString());
+                // send data to EventBus from Service thread
+        EventBus.getDefault().post(new MessageEvent(sb.toString()));
+    }
 
-            while (isRunning) {
-
-            }
-            EventBus.getDefault().post(new MessageEvent(data));
-            Log.d("SensorService", data);
-
-
-//            for (int i = 0; i < 5; i++) {
-//
-//                EventBus.getDefault().post(new MessageEvent("" + i));
-//
-//                try {
-//                    Thread.sleep(1000);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-        }
-
-        public void resume() {
-            isRunning = true;
-        }
-
-
-        @Override
-        public void onFlushCompleted(Sensor sensor) {
-
-        }
-
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                data = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
-
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-        }
-
-        int refreshRate;
-        String ip;
-        String port;
-        boolean stream;
-        String userId;
-
-        private void updateLog(TextView log, String accData, int queueSize, long dataPointsCollected,
-                               int collectionRateMs, int messages) {
-            /**
-             * Accelerometer readings:
-             * Current broker queue size:
-             * Total data-points collected:
-             * Current sampling frequency:
-             */
-            int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
-            StringBuilder sb = new StringBuilder();
-            sb.append(refreshRate + ", " + ip + ", " + port + ", " + stream + ", " + ip + ", " + userId + "\n\n");
-            sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
-            sb.append("Current broker queue size: " + queueSize + "\n\n");
-            sb.append("Total messages (chunks) sent: " + messages + "\n\n");
-            sb.append("Total data-points collected: " + dataPointsCollected + "\n\n");
-            sb.append("Current sampling frequency: " + frequency + "Hz \n\n");
-
-            log.setText(sb.toString());
-
-        }
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // do nothing
     }
 }
