@@ -69,9 +69,19 @@ public class SensorService extends Service {
     }
 
     class ExampleRunnable implements Runnable, SensorEventListener2 {
+        private boolean isRunning = false;
 
+        String data = "";
         @Override
         public void run() {
+
+            while (isRunning) {
+
+            }
+            EventBus.getDefault().post(new MessageEvent(data));
+            Log.d("SensorService", data);
+
+
 //            for (int i = 0; i < 5; i++) {
 //
 //                EventBus.getDefault().post(new MessageEvent("" + i));
@@ -84,6 +94,11 @@ public class SensorService extends Service {
 //            }
         }
 
+        public void resume() {
+            isRunning = true;
+        }
+
+
         @Override
         public void onFlushCompleted(Sensor sensor) {
 
@@ -92,9 +107,8 @@ public class SensorService extends Service {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                String accData = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
-                EventBus.getDefault().post(new MessageEvent(accData));
-                Log.d("SensorService", accData);
+                data = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
+
             }
         }
 
