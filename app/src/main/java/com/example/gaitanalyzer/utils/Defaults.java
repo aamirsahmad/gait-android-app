@@ -1,6 +1,8 @@
-package com.example.gaitanalyzer;
+package com.example.gaitanalyzer.utils;
 
 import android.content.Context;
+
+import com.example.gaitanalyzer.R;
 
 public class Defaults {
     Context context;

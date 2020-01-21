@@ -1,4 +1,4 @@
-package com.example.gaitanalyzer;
+package com.example.gaitanalyzer.services;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -8,6 +8,12 @@ import android.os.IBinder;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+
+import com.example.gaitanalyzer.MainActivity;
+import com.example.gaitanalyzer.R;
+import com.example.gaitanalyzer.eventbus.MessageEvent;
+
+import org.greenrobot.eventbus.EventBus;
 
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 
@@ -32,6 +38,13 @@ public class AccelerometerService extends Service {
                 .setContentIntent(pendingIntent)
                 .build();
 
+        // send data to EventBus from Service thread
+        EventBus.getDefault().post(new MessageEvent("Hello everyone!"));
+
+        // send data to EventBus from a child thread of Service thread
+        ExampleRunnable exampleRunnable = new ExampleRunnable();
+        new Thread(exampleRunnable).start();
+
         startForeground(1, notification);
 
         return START_NOT_STICKY;
@@ -46,5 +59,21 @@ public class AccelerometerService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    class ExampleRunnable implements Runnable {
+
+        @Override
+        public void run() {
+            for (int i = 0; i < 5; i++) {
+                EventBus.getDefault().post(new MessageEvent("" + i));
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

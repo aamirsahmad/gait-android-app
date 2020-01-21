@@ -1,4 +1,4 @@
-package com.example.gaitanalyzer;
+package com.example.gaitanalyzer.services;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -11,6 +11,9 @@ import android.os.IBinder;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+
+import com.example.gaitanalyzer.MainActivity;
+import com.example.gaitanalyzer.R;
 
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 

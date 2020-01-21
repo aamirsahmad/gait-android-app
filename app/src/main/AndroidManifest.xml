@@ -29,7 +29,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".AccelerometerService"></service>
+        <service android:name=".services.AccelerometerService"></service>
     </application>
 
 </manifest>

@@ -8,7 +8,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
@@ -21,6 +20,16 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
+
+import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.services.AccelerometerService;
+import com.example.gaitanalyzer.utils.Defaults;
+import com.example.gaitanalyzer.utils.TimeSeriesUtil;
+import com.example.gaitanalyzer.websocket.Broker;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -110,8 +119,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     startRecording();
                     startService(view);
 
-                    ExampleRunnable runnable = new ExampleRunnable();
-                    new Thread(runnable).start();
+//                    ExampleRunnable runnable = new ExampleRunnable();
+//                    new Thread(runnable).start();
                 } else {
                     currentState = MaterialPlayPauseDrawable.State.Play;
                     stopRecording();
@@ -331,7 +340,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
          * Total data-points collected:
          * Current sampling frequency:
          */
-        int frequency = Util.getFrequency(collectionRateMs);
+        int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
         StringBuilder sb = new StringBuilder();
         sb.append(refreshRate + ", " + ip + ", " + port + ", " + stream + ", " + ip + ", " + userId + " " + data + "\n\n");
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
@@ -343,7 +352,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         log.setText(sb.toString());
 
     }
-
 
 
     @Override
@@ -378,108 +386,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         stopService(serviceIntent);
     }
 
-    private Handler handler = new Handler();
-    private String data;
+    private String data = "";
 
-    class ExampleRunnable implements Runnable, SensorEventListener2 {
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(MessageEvent event) {
+//        Toast.makeText(this, event.message, Toast.LENGTH_SHORT).show();
+        data = event.message;
+    }
 
-        @Override
-        public void run() {
-            for (int i = 0; i < 5; i++) {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
 
-                if (i == 4) {
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            data = "reached 4";
-                        }
-                    });
-                }
-
-                Log.d(TAG, "startThread " + i);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Override
-        public void onFlushCompleted(Sensor sensor) {
-
-        }
-
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (isRunning) {
-                try {
-                    switch (event.sensor.getType()) {
-                        case Sensor.TYPE_ACCELEROMETER:
-                            dataPointsCollected++;
-//                        String accData = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
-//                        long timeInMillis = (new Date()).getTime()
-//                                + (event.timestamp - System.currentTimeMillis()) / 1000000L;
-//                        long timeInMillis = (new Date().getTime() - SystemClock.elapsedRealtime()) * 1000000
-//                                + event.timestamp;
-//                        long timeNow = System.currentTimeMillis();
-                            long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
-                            if (lastTime == 0 || timeInMillis - lastTime >= collectionRateMs) {
-                                samplingIndex++;
-                                double vsum = Math.sqrt(
-                                        (event.values[0] * event.values[0])
-                                                + (event.values[1] * event.values[1])
-                                                + (event.values[2] * event.values[2])
-                                );
-
-                                lastTime = timeInMillis;
-                                Log.d(TAG, "date.getTime: " + timeInMillis);
-
-//                            String accData = String.format("%d, %d, %d, %f, %f, %f, %f", samplingIndex, userID, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
-                                String accData = String.format("%d, %s, %d, %f, %f, %f, %f", samplingIndex, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
-
-                                writer.write(accData + "\n");
-                                int socketMessage = -1;
-                                if (socket != null) {
-                                    socketMessage = socket.messagesWebSocket;
-                                }
-                                updateLog(log, accData, broker.getQueueSize(), dataPointsCollected, collectionRateMs, socketMessage);
-
-                                // ADD DATA TO BROKER
-                                if (stream == true) {
-                                    addData(accData, broker);
-                                }
-                            }
-
-                            break;
-//                    case Sensor.TYPE_GYROSCOPE_UNCALIBRATED:
-//                        writer.write(String.format("%d; GYRO_UN; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], event.values[4], event.values[5]));
-//                        break;
-//                    case Sensor.TYPE_GYROSCOPE:
-//                        writer.write(String.format("%d; GYRO; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
-//                        break;
-//                    case Sensor.TYPE_MAGNETIC_FIELD:
-//                        writer.write(String.format("%d; MAG; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
-//                        break;
-//                    case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED:
-//                        writer.write(String.format("%d; MAG_UN; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f));
-//                        break;
-//                    case Sensor.TYPE_ROTATION_VECTOR:
-//                        writer.write(String.format("%d; ROT; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], 0.f, 0.f));
-//                        break;
-//                    case Sensor.TYPE_GAME_ROTATION_VECTOR:
-//                        writer.write(String.format("%d; GAME_ROT; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], event.values[3], 0.f, 0.f));
-//                        break;
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-        }
+    @Override
+    protected void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
     }
 }

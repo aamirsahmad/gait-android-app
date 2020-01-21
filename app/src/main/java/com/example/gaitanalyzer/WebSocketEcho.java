@@ -2,6 +2,8 @@ package com.example.gaitanalyzer;
 
 import android.util.Log;
 
+import com.example.gaitanalyzer.websocket.Broker;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

@@ -1,13 +1,14 @@
-package com.example.gaitanalyzer;
+package com.example.gaitanalyzer.websocket;
 
 //import android.util.Log;
 
 import java.util.Comparator;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 //import java.util.concurrent.ArrayBlockingQueue;
 //import java.util.concurrent.BlockingQueue;
 //import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class Broker
 {
