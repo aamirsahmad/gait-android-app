@@ -8,16 +8,22 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener2;
 import android.os.IBinder;
+import android.util.Log;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
+import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.utils.TimeSeriesUtil;
+
+import org.greenrobot.eventbus.EventBus;
 
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 
-public class SensorService extends Service implements SensorEventListener2 {
+public class SensorService extends Service {
 
     @Override
     public void onCreate() {
@@ -38,6 +44,14 @@ public class SensorService extends Service implements SensorEventListener2 {
                 .setContentIntent(pendingIntent)
                 .build();
 
+//        // send data to EventBus from Service thread
+//        EventBus.getDefault().post(new MessageEvent("Hello everyone!"));
+        Log.d("SensorService", "starting thread");
+
+        // send data to EventBus from a child thread of Service thread
+        ExampleRunnable exampleRunnable = new ExampleRunnable();
+        new Thread(exampleRunnable).start();
+
         startForeground(1, notification);
 
         return START_NOT_STICKY;
@@ -54,18 +68,66 @@ public class SensorService extends Service implements SensorEventListener2 {
         return null;
     }
 
-    @Override
-    public void onFlushCompleted(Sensor sensor) {
+    class ExampleRunnable implements Runnable, SensorEventListener2 {
 
-    }
+        @Override
+        public void run() {
+//            for (int i = 0; i < 5; i++) {
+//
+//                EventBus.getDefault().post(new MessageEvent("" + i));
+//
+//                try {
+//                    Thread.sleep(1000);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+        }
 
-    @Override
-    public void onSensorChanged(SensorEvent event) {
+        @Override
+        public void onFlushCompleted(Sensor sensor) {
 
-    }
+        }
 
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                String accData = String.format("%d; ACC; %f; %f; %f; %f; %f; %f\n", event.timestamp, event.values[0], event.values[1], event.values[2], 0.f, 0.f, 0.f);
+                EventBus.getDefault().post(new MessageEvent(accData));
+                Log.d("SensorService", accData);
+            }
+        }
 
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+        }
+
+        int refreshRate;
+        String ip;
+        String port;
+        boolean stream;
+        String userId;
+
+        private void updateLog(TextView log, String accData, int queueSize, long dataPointsCollected,
+                               int collectionRateMs, int messages) {
+            /**
+             * Accelerometer readings:
+             * Current broker queue size:
+             * Total data-points collected:
+             * Current sampling frequency:
+             */
+            int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
+            StringBuilder sb = new StringBuilder();
+            sb.append(refreshRate + ", " + ip + ", " + port + ", " + stream + ", " + ip + ", " + userId + "\n\n");
+            sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
+            sb.append("Current broker queue size: " + queueSize + "\n\n");
+            sb.append("Total messages (chunks) sent: " + messages + "\n\n");
+            sb.append("Total data-points collected: " + dataPointsCollected + "\n\n");
+            sb.append("Current sampling frequency: " + frequency + "Hz \n\n");
+
+            log.setText(sb.toString());
+
+        }
     }
 }

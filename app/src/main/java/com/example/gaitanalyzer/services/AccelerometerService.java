@@ -38,12 +38,12 @@ public class AccelerometerService extends Service {
                 .setContentIntent(pendingIntent)
                 .build();
 
-        // send data to EventBus from Service thread
-        EventBus.getDefault().post(new MessageEvent("Hello everyone!"));
-
-        // send data to EventBus from a child thread of Service thread
-        ExampleRunnable exampleRunnable = new ExampleRunnable();
-        new Thread(exampleRunnable).start();
+//        // send data to EventBus from Service thread
+//        EventBus.getDefault().post(new MessageEvent("Hello everyone!"));
+//
+//        // send data to EventBus from a child thread of Service thread
+//        ExampleRunnable exampleRunnable = new ExampleRunnable();
+//        new Thread(exampleRunnable).start();
 
         startForeground(1, notification);
 
@@ -66,6 +66,7 @@ public class AccelerometerService extends Service {
         @Override
         public void run() {
             for (int i = 0; i < 5; i++) {
+
                 EventBus.getDefault().post(new MessageEvent("" + i));
 
                 try {
