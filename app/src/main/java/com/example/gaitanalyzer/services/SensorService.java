@@ -101,6 +101,7 @@ public class SensorService extends Service implements SensorEventListener {
         if (stream) {
             initStreaming();
         }
+
         initRecordingFile();
         return START_NOT_STICKY;
     }
@@ -163,41 +164,37 @@ public class SensorService extends Service implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         try {
-            switch (event.sensor.getType()) {
-                case Sensor.TYPE_ACCELEROMETER:
-                    rawAccelerometerEventsCount++;
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                rawAccelerometerEventsCount++;
 
-                    long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
-                    if (prevAccelerometerEventCaptureTime == 0 || timeInMillis - prevAccelerometerEventCaptureTime >= collectionRateMs) {
-                        accelerometerEventsCollected++;
-                        double vsum = Math.sqrt(
-                                (event.values[0] * event.values[0])
-                                        + (event.values[1] * event.values[1])
-                                        + (event.values[2] * event.values[2])
-                        );
+                long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
+                if (prevAccelerometerEventCaptureTime == 0 || timeInMillis - prevAccelerometerEventCaptureTime >= collectionRateMs) {
+                    accelerometerEventsCollected++;
+                    double vsum = Math.sqrt(
+                            (event.values[0] * event.values[0])
+                                    + (event.values[1] * event.values[1])
+                                    + (event.values[2] * event.values[2])
+                    );
 
-                        prevAccelerometerEventCaptureTime = timeInMillis;
-                        Log.d(TAG, "date.getTime: " + timeInMillis);
+                    prevAccelerometerEventCaptureTime = timeInMillis;
+                    Log.d(TAG, "date.getTime: " + timeInMillis);
 
-                        String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
+                    String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
 
-                        writer.write(accData + "\n");
-                        int socketMessage = -1;
-                        if (stream) {
-                            socketMessage = socket.getMessagesWebSocket();
-                        }
-//
-                        int brokerSize = stream ? broker.getQueueSize() : -1;
-                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
-//
-//                            // ADD DATA TO BROKER
-                        if (stream == true) {
-                            addData(accData, this.broker);
-                        }
+                    writer.write(accData + "\n");
+                    int socketMessage = -1;
+                    if (stream) {
+                        socketMessage = socket.getMessagesWebSocket();
                     }
 
-                    break;
+                    int brokerSize = stream ? broker.getQueueSize() : -1;
+                    updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
 
+                    // ADD DATA TO BROKER
+                    if (stream) {
+                        addData(accData, this.broker);
+                    }
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -266,5 +263,4 @@ public class SensorService extends Service implements SensorEventListener {
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());
         userId = sharedPreferences.getString("user_id", defaults.getUserId());
     }
-
 }
