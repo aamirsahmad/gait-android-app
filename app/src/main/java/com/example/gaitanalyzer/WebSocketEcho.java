@@ -26,6 +26,15 @@ public final class WebSocketEcho extends WebSocketListener implements Runnable {
     private String name;
     private URL url;
     private final String TAG = "WebSocketEcho";
+
+    public int getMessagesWebSocket() {
+        return messagesWebSocket;
+    }
+
+    public void setMessagesWebSocket(int messagesWebSocket) {
+        this.messagesWebSocket = messagesWebSocket;
+    }
+
     int messagesWebSocket = 0;
     UUID uuid = UUID.randomUUID();
     String randomUUIDString = uuid.toString();
