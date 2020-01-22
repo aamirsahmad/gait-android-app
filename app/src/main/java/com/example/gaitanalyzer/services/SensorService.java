@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -34,21 +35,12 @@ import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import android.content.SharedPreferences;
-
-
 import static com.example.gaitanalyzer.App.CHANNEL_ID;
 
 public class SensorService extends Service implements SensorEventListener {
-
-    /**
-     * loging tag
-     */
     private static final String TAG = SensorService.class.getSimpleName();
 
     private SensorManager mSensorManager = null;
-
-
 
     long rawAccelerometerEventsCount = 0;
     long accelerometerEventsCollected = 0;
@@ -56,9 +48,6 @@ public class SensorService extends Service implements SensorEventListener {
     private final int collectionRateMs = 19; // todo move to settings
     SharedPreferences sharedPreferences;
     Defaults defaults;
-
-
-
 
     FileWriter writer;
     File myDir;
@@ -69,7 +58,7 @@ public class SensorService extends Service implements SensorEventListener {
     private Broker broker;
     private Broker broker2;
 
-    String userId ;
+    String userId;
     Boolean stream;
     int refreshRate;
     String ip;
@@ -91,9 +80,11 @@ public class SensorService extends Service implements SensorEventListener {
 
         // todo : check from shared preferences which type of sensor to collect
         int samplingRate = 0; // fastest possible
-        mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), samplingRate);
+        if (mSensorManager != null) {
+            mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), samplingRate);
+        }
 
-        String input = intent.getStringExtra("inputExtra");
+        String input = intent.getStringExtra("msg");
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
@@ -107,14 +98,14 @@ public class SensorService extends Service implements SensorEventListener {
 
         startForeground(1, notification);
 
-        if(stream){
+        if (stream) {
             initStreaming();
         }
         initRecordingFile();
         return START_NOT_STICKY;
     }
 
-    private void initStreaming(){
+    private void initStreaming() {
         try {
             broker = new Broker();
             broker2 = new Broker();
@@ -131,39 +122,28 @@ public class SensorService extends Service implements SensorEventListener {
         }
     }
 
-    public void showNotification() {
-
-    }
-
-    private void initRecordingFile(){
+    private void initRecordingFile() {
         Log.d(TAG, "Writing to " + getStorageDir());
         try {
             myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-
             String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
-            File file = new File (myDir, FILENAME);
-
-
-            String path = getStorageDir() + "/sensors_" + System.currentTimeMillis() + ".csv";
+            File file = new File(myDir, FILENAME);
             writer = new FileWriter(file);
             writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
-
-//            outputPath.setText(file.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     @Override
     public void onDestroy() {
         mSensorManager.flush(this);
         mSensorManager.unregisterListener(this);
-        if(stream){
+        if (stream) {
             broker.continueProducing = Boolean.FALSE;
         }
         prevAccelerometerEventCaptureTime = 0;
-        if(stream){
+        if (stream) {
             closePool();
         }
         try {
@@ -203,17 +183,17 @@ public class SensorService extends Service implements SensorEventListener {
 
                         writer.write(accData + "\n");
                         int socketMessage = -1;
-                            if (stream) {
-                                socketMessage = socket.getMessagesWebSocket();
-                            }
+                        if (stream) {
+                            socketMessage = socket.getMessagesWebSocket();
+                        }
 //
                         int brokerSize = stream ? broker.getQueueSize() : -1;
-                        updateLog(accData, brokerSize , rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
 //
 //                            // ADD DATA TO BROKER
-                            if (stream == true) {
-                                addData(accData, this.broker);
-                            }
+                        if (stream == true) {
+                            addData(accData, this.broker);
+                        }
                     }
 
                     break;
@@ -232,6 +212,7 @@ public class SensorService extends Service implements SensorEventListener {
     private String getStorageDir() {
         return this.getExternalFilesDir(null).getAbsolutePath();
     }
+
     private void updateLog(String accData, int queueSize, long dataPointsCollected,
                            int collectionRateMs, int messages) {
         /**

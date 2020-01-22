@@ -11,7 +11,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -33,14 +32,13 @@ import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton;
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     TextView outputPath;
     TextView log;
-    private static final String TAG = MainActivity.class.getSimpleName();
 
     // init on create
-    File myDir;
-
+    private File myDir;
 
     Defaults defaults;
     SharedPreferences sharedPreferences;
@@ -51,15 +49,13 @@ public class MainActivity extends AppCompatActivity {
     PowerManager powerManager;
     PowerManager.WakeLock wakeLock;
 
-    String userId ;
+    String userId;
     Boolean stream;
     int refreshRate;
     String ip;
     String port;
 
     private String data = "";
-
-    String isSensorServiceRunning = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,9 +101,6 @@ public class MainActivity extends AppCompatActivity {
         recordingButton.setState(currentState);
     }
 
-
-
-
     private void refreshPreferences() {
         refreshRate = Integer.parseInt(sharedPreferences.getString("sensor_refresh_rate", defaults.getRefreshRate()));
         ip = sharedPreferences.getString("ip", defaults.getHostname());
@@ -124,11 +117,10 @@ public class MainActivity extends AppCompatActivity {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
         // update recording button state
-        if(sharedPreferences.getString("PlayPauseBtn", "").equals("Pause")){
+        if (sharedPreferences.getString("PlayPauseBtn", "").equals("Pause")) {
             recordingButton.setState(MaterialPlayPauseDrawable.State.Pause);
         }
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -148,14 +140,14 @@ public class MainActivity extends AppCompatActivity {
     public void startRecordingService(View v) {
         wakeLock.acquire();
         Intent serviceIntent = new Intent(this, SensorService.class);
-        serviceIntent.putExtra("inputExtra", "true");
+        serviceIntent.putExtra("msg", "Collecting gait data ...");
         ContextCompat.startForegroundService(this, serviceIntent);
     }
 
     public void stopRecordingService(View v) {
         Intent serviceIntent = new Intent(this, SensorService.class);
         stopService(serviceIntent);
-        if(wakeLock.isHeld()){
+        if (wakeLock.isHeld()) {
             wakeLock.release();
         }
     }
@@ -179,25 +171,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onDestroy(){
+    protected void onDestroy() {
         super.onDestroy();
     }
 
-    private void initDir(){
+    private void initDir() {
         int permission = ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
         String[] PERMISSIONS_STORAGE = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
-        if (permission != PackageManager.PERMISSION_GRANTED)
-        {
-            ActivityCompat.requestPermissions(MainActivity.this,PERMISSIONS_STORAGE, 1);
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS_STORAGE, 1);
         }
 
-
         myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-
         myDir.mkdirs();
     }
-
-
 }
