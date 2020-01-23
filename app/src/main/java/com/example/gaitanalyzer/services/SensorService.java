@@ -21,12 +21,15 @@ import androidx.preference.PreferenceManager;
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.WebSocketEcho;
-import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.eventbus.LogEvent;
+import com.example.gaitanalyzer.logs.LogData;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.TimeSeriesUtil;
 import com.example.gaitanalyzer.websocket.Broker;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -64,6 +67,8 @@ public class SensorService extends Service implements SensorEventListener {
     String ip;
     String port;
 
+    private LogData logData;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -95,6 +100,8 @@ public class SensorService extends Service implements SensorEventListener {
                 .setSmallIcon(R.drawable.ic_android)
                 .setContentIntent(pendingIntent)
                 .build();
+
+        EventBus.getDefault().register(this);
 
         startForeground(1, notification);
 
@@ -140,6 +147,8 @@ public class SensorService extends Service implements SensorEventListener {
     public void onDestroy() {
         mSensorManager.flush(this);
         mSensorManager.unregisterListener(this);
+        EventBus.getDefault().unregister(this);
+
         if (stream) {
             broker.continueProducing = Boolean.FALSE;
         }
@@ -152,6 +161,7 @@ public class SensorService extends Service implements SensorEventListener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         super.onDestroy();
     }
 
@@ -180,6 +190,15 @@ public class SensorService extends Service implements SensorEventListener {
                     Log.d(TAG, "date.getTime: " + timeInMillis);
 
                     String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
+                    if (logData != null) {
+                        logData.setIndex(accelerometerEventsCollected);
+                        logData.setUserID(userId);
+                        logData.setTimeMs(timeInMillis);
+                        logData.setAccX(event.values[0]);
+                        logData.setAccY(event.values[1]);
+                        logData.setAccZ(event.values[2]);
+                        logData.setvSum(vsum);
+                    }
 
                     writer.write(accData + "\n");
                     int socketMessage = -1;
@@ -188,7 +207,9 @@ public class SensorService extends Service implements SensorEventListener {
                     }
 
                     int brokerSize = stream ? broker.getQueueSize() : -1;
-                    updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                    if (logData != null) {
+                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                    }
 
                     // ADD DATA TO BROKER
                     if (stream) {
@@ -221,13 +242,12 @@ public class SensorService extends Service implements SensorEventListener {
         int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
         StringBuilder sb = new StringBuilder();
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
-        sb.append("Current broker queue size: " + queueSize + "\n\n");
-        sb.append("Total messages (chunks) sent: " + messages + "\n\n");
-        sb.append("Total data-points collected: " + dataPointsCollected + "\n\n");
-        sb.append("Current sampling frequency: " + frequency + "Hz \n\n");
 
-        EventBus.getDefault().post(new MessageEvent(sb.toString()));
 
+        logData.setQueueSize(queueSize);
+        logData.setMessages(messages);
+        logData.setDataPointsCollected(dataPointsCollected);
+        logData.setFrequency(frequency);
     }
 
     void closePool() {
@@ -262,5 +282,10 @@ public class SensorService extends Service implements SensorEventListener {
         port = sharedPreferences.getString("port", defaults.getPort());
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());
         userId = sharedPreferences.getString("user_id", defaults.getUserId());
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onLogEvent(LogEvent event) {
+        logData = event.getLogData();
     }
 }

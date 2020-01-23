@@ -10,7 +10,6 @@ import android.os.PowerManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -18,13 +17,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
 import com.example.gaitanalyzer.utils.Defaults;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 
@@ -33,9 +28,6 @@ import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
-
-    TextView outputPath;
-    TextView log;
 
     // init on create
     private File myDir;
@@ -70,8 +62,6 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
 
-        outputPath = (TextView) findViewById(R.id.outputPath);
-        log = (TextView) findViewById(R.id.log);
         recordingButton = findViewById(R.id.play_pause);
 
         // Preferences
@@ -131,6 +121,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.m1) {
+            Intent intent = new Intent(this, LogActivity.class);
+            this.startActivity(intent);
+        } else if (item.getItemId() == R.id.m2) {
             Intent intent = new Intent(this, SettingsActivity.class);
             this.startActivity(intent);
         }
@@ -152,22 +145,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(MessageEvent event) {
-        data = event.message;
-        log.setText(data);
-    }
-
     @Override
     protected void onStart() {
         super.onStart();
-        EventBus.getDefault().register(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        EventBus.getDefault().unregister(this);
     }
 
     @Override
