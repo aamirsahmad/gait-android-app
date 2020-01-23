@@ -38,6 +38,7 @@
         android:elevation="4dp"
         android:theme="?actionBarTheme"
         android:tint="?colorControlNormal"
+        android:onClick="onClickPlayPause"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
