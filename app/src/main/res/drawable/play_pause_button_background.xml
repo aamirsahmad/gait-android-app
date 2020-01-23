@@ -9,7 +9,8 @@
 
     <item>
         <shape android:shape="oval">
-            <solid android:color="@color/accent_material_light" />
+            <!--            <solid android:color="@color/accent_material_light" />-->
+            <solid android:color="#ffb300" />
             <corners android:radius="5dp" />
         </shape>
     </item>
