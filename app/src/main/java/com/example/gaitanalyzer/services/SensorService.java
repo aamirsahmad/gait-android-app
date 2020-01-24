@@ -21,13 +21,17 @@ import androidx.preference.PreferenceManager;
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.WebSocketEcho;
-import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.eventbus.LogEvent;
+import com.example.gaitanalyzer.logs.LogData;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.TimeSeriesUtil;
 import com.example.gaitanalyzer.websocket.Broker;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -50,6 +54,7 @@ public class SensorService extends Service implements SensorEventListener {
     Defaults defaults;
 
     FileWriter writer;
+    BufferedWriter bufferedWriter;
     File myDir;
 
     ExecutorService threadPool;
@@ -64,9 +69,16 @@ public class SensorService extends Service implements SensorEventListener {
     String ip;
     String port;
 
+    private LogData logData;
+    private File file;
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+//        ActivityHelper.getPermissionsFromAndroidOS(this);
+//        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+//        myDir.mkdirs();
     }
 
     @Override
@@ -75,7 +87,7 @@ public class SensorService extends Service implements SensorEventListener {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         this.defaults = new Defaults(getApplicationContext());
         refreshPreferences();
-
+        createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
         // todo : check from shared preferences which type of sensor to collect
@@ -96,13 +108,14 @@ public class SensorService extends Service implements SensorEventListener {
                 .setContentIntent(pendingIntent)
                 .build();
 
+        EventBus.getDefault().register(this);
+
         startForeground(1, notification);
 
         if (stream) {
             initStreaming();
         }
 
-        initRecordingFile();
         return START_NOT_STICKY;
     }
 
@@ -123,14 +136,17 @@ public class SensorService extends Service implements SensorEventListener {
         }
     }
 
-    private void initRecordingFile() {
-        Log.d(TAG, "Writing to " + getStorageDir());
+    private void createRecordingFile() {
         try {
             myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+            System.out.println("myDir.getAbsolutePath()" + myDir.getAbsolutePath());
+            System.out.println("myDir.canRead()" + myDir.canRead());
             String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
-            File file = new File(myDir, FILENAME);
+            file = new File(myDir, FILENAME);
+            Log.d(TAG, "Writing to " + file.getAbsolutePath());
             writer = new FileWriter(file);
-            writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
+            bufferedWriter = new BufferedWriter(writer);
+            bufferedWriter.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -140,6 +156,8 @@ public class SensorService extends Service implements SensorEventListener {
     public void onDestroy() {
         mSensorManager.flush(this);
         mSensorManager.unregisterListener(this);
+        EventBus.getDefault().unregister(this);
+
         if (stream) {
             broker.continueProducing = Boolean.FALSE;
         }
@@ -152,6 +170,7 @@ public class SensorService extends Service implements SensorEventListener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         super.onDestroy();
     }
 
@@ -180,15 +199,27 @@ public class SensorService extends Service implements SensorEventListener {
                     Log.d(TAG, "date.getTime: " + timeInMillis);
 
                     String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
+                    if (logData != null) {
+                        logData.setIndex(accelerometerEventsCollected);
+                        logData.setUserID(userId);
+                        logData.setTimeMs(timeInMillis);
+                        logData.setAccX(event.values[0]);
+                        logData.setAccY(event.values[1]);
+                        logData.setAccZ(event.values[2]);
+                        logData.setvSum(vsum);
+                    }
 
-                    writer.write(accData + "\n");
+                    bufferedWriter.write(accData + "\n");
+
                     int socketMessage = -1;
                     if (stream) {
                         socketMessage = socket.getMessagesWebSocket();
                     }
 
                     int brokerSize = stream ? broker.getQueueSize() : -1;
-                    updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                    if (logData != null) {
+                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                    }
 
                     // ADD DATA TO BROKER
                     if (stream) {
@@ -206,10 +237,6 @@ public class SensorService extends Service implements SensorEventListener {
         // do nothing
     }
 
-    private String getStorageDir() {
-        return this.getExternalFilesDir(null).getAbsolutePath();
-    }
-
     private void updateLog(String accData, int queueSize, long dataPointsCollected,
                            int collectionRateMs, int messages) {
         /**
@@ -221,13 +248,12 @@ public class SensorService extends Service implements SensorEventListener {
         int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
         StringBuilder sb = new StringBuilder();
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
-        sb.append("Current broker queue size: " + queueSize + "\n\n");
-        sb.append("Total messages (chunks) sent: " + messages + "\n\n");
-        sb.append("Total data-points collected: " + dataPointsCollected + "\n\n");
-        sb.append("Current sampling frequency: " + frequency + "Hz \n\n");
 
-        EventBus.getDefault().post(new MessageEvent(sb.toString()));
 
+        logData.setQueueSize(queueSize);
+        logData.setMessages(messages);
+        logData.setDataPointsCollected(dataPointsCollected);
+        logData.setFrequency(frequency);
     }
 
     void closePool() {
@@ -262,5 +288,11 @@ public class SensorService extends Service implements SensorEventListener {
         port = sharedPreferences.getString("port", defaults.getPort());
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());
         userId = sharedPreferences.getString("user_id", defaults.getUserId());
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onLogEvent(LogEvent event) {
+        logData = event.getLogData();
+        logData.setCurrentRecordingAbsolutePath(file.getAbsolutePath());
     }
 }

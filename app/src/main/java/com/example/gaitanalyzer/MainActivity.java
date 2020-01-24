@@ -1,30 +1,23 @@
 package com.example.gaitanalyzer;
 
-import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.example.gaitanalyzer.eventbus.MessageEvent;
+import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
+import com.example.gaitanalyzer.utils.ActivityHelper;
 import com.example.gaitanalyzer.utils.Defaults;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 
@@ -33,9 +26,6 @@ import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
-
-    TextView outputPath;
-    TextView log;
 
     // init on create
     private File myDir;
@@ -55,8 +45,6 @@ public class MainActivity extends AppCompatActivity {
     String ip;
     String port;
 
-    private String data = "";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -70,8 +58,6 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
 
-        outputPath = (TextView) findViewById(R.id.outputPath);
-        log = (TextView) findViewById(R.id.log);
         recordingButton = findViewById(R.id.play_pause);
 
         // Preferences
@@ -80,7 +66,9 @@ public class MainActivity extends AppCompatActivity {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
 
-        initDir();
+        ActivityHelper.getPermissionsFromAndroidOS(this);
+        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+        myDir.mkdirs();
     }
 
     public void onClickPlayPause(View view) {
@@ -131,6 +119,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.m1) {
+            Intent intent = new Intent(this, LogActivity.class);
+            this.startActivity(intent);
+        } else if (item.getItemId() == R.id.m2) {
             Intent intent = new Intent(this, SettingsActivity.class);
             this.startActivity(intent);
         }
@@ -152,22 +143,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onMessageEvent(MessageEvent event) {
-        data = event.message;
-        log.setText(data);
-    }
-
     @Override
     protected void onStart() {
         super.onStart();
-        EventBus.getDefault().register(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        EventBus.getDefault().unregister(this);
     }
 
     @Override
@@ -175,16 +158,5 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private void initDir() {
-        int permission = ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-        String[] PERMISSIONS_STORAGE = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS_STORAGE, 1);
-        }
-
-        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-        myDir.mkdirs();
-    }
 }
