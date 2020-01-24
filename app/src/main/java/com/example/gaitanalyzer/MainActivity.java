@@ -1,9 +1,7 @@
 package com.example.gaitanalyzer;
 
-import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
@@ -13,12 +11,12 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
+import com.example.gaitanalyzer.utils.ActivityHelper;
 import com.example.gaitanalyzer.utils.Defaults;
 
 import java.io.File;
@@ -47,8 +45,6 @@ public class MainActivity extends AppCompatActivity {
     String ip;
     String port;
 
-    private String data = "";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -70,7 +66,9 @@ public class MainActivity extends AppCompatActivity {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
 
-        initDir();
+        ActivityHelper.getPermissionsFromAndroidOS(this);
+        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+        myDir.mkdirs();
     }
 
     public void onClickPlayPause(View view) {
@@ -160,16 +158,5 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private void initDir() {
-        int permission = ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-        String[] PERMISSIONS_STORAGE = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-
-        if (permission != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS_STORAGE, 1);
-        }
-
-        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-        myDir.mkdirs();
-    }
 }

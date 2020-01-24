@@ -52,7 +52,7 @@ public class LogActivity extends AppCompatActivity {
             while (isRunning) {
                 try {
                     Thread.sleep(100);
-                    log.setText(logData.toString());
+                    log.setText(logData.toHTMLString());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

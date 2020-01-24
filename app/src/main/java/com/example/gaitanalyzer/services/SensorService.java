@@ -68,10 +68,15 @@ public class SensorService extends Service implements SensorEventListener {
     String port;
 
     private LogData logData;
+    private File file;
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+//        ActivityHelper.getPermissionsFromAndroidOS(this);
+//        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+//        myDir.mkdirs();
     }
 
     @Override
@@ -80,7 +85,7 @@ public class SensorService extends Service implements SensorEventListener {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         this.defaults = new Defaults(getApplicationContext());
         refreshPreferences();
-
+        createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
         // todo : check from shared preferences which type of sensor to collect
@@ -109,7 +114,6 @@ public class SensorService extends Service implements SensorEventListener {
             initStreaming();
         }
 
-        initRecordingFile();
         return START_NOT_STICKY;
     }
 
@@ -130,12 +134,13 @@ public class SensorService extends Service implements SensorEventListener {
         }
     }
 
-    private void initRecordingFile() {
-        Log.d(TAG, "Writing to " + getStorageDir());
+    private void createRecordingFile() {
         try {
             myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+            System.out.println("myDir.canRead()" + myDir.canRead());
             String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
-            File file = new File(myDir, FILENAME);
+            file = new File(myDir, FILENAME);
+            Log.d(TAG, "Writing to " + file.getAbsolutePath());
             writer = new FileWriter(file);
             writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
         } catch (IOException e) {
@@ -227,10 +232,6 @@ public class SensorService extends Service implements SensorEventListener {
         // do nothing
     }
 
-    private String getStorageDir() {
-        return this.getExternalFilesDir(null).getAbsolutePath();
-    }
-
     private void updateLog(String accData, int queueSize, long dataPointsCollected,
                            int collectionRateMs, int messages) {
         /**
@@ -287,5 +288,6 @@ public class SensorService extends Service implements SensorEventListener {
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onLogEvent(LogEvent event) {
         logData = event.getLogData();
+        logData.setCurrentRecordingAbsolutePath(file.getAbsolutePath());
     }
 }

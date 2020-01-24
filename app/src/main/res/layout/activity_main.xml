@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="#eeeeee"
     tools:context=".MainActivity">
 
     <include
@@ -14,20 +14,7 @@
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="@+id/serverReply"
         tools:layout_editor_absoluteX="4dp"></include>
-
-
-    <TextView
-        android:id="@+id/outputPath"
-        android:layout_width="349dp"
-        android:layout_height="63dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="344dp"
-        android:text="output path"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.326"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+    
     <me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton
         android:id="@+id/play_pause"
         android:layout_width="120dp"

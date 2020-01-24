@@ -1,6 +1,14 @@
 package com.example.gaitanalyzer.logs;
 
+import android.text.Html;
+import android.text.Spanned;
+
 public class LogData {
+    private static final String COLOR_PINK = "#CC6666";
+    private static final String COLOR_YELLOW = "#FFCC66";
+    private static final String NEW_LINE = "\n\n";
+
+
     // Sensor logs
     long index;
     String userID;
@@ -16,6 +24,9 @@ public class LogData {
     int collectionRateMs;
     int messages;
     double frequency;
+
+    String currentRecordingAbsolutePath;
+
 
     public LogData() {
     }
@@ -116,23 +127,59 @@ public class LogData {
         this.frequency = frequency;
     }
 
+    public String getCurrentRecordingAbsolutePath() {
+        return currentRecordingAbsolutePath;
+    }
+
+    public void setCurrentRecordingAbsolutePath(String currentRecordingAbsolutePath) {
+        this.currentRecordingAbsolutePath = currentRecordingAbsolutePath;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         String space = "\t\t\t\t";
-        String newLine = "\n\n";
-        sb.append("index" + space + userID + newLine);
-        sb.append("timeMs" + space + timeMs + newLine);
-        sb.append("accX" + space + accX + newLine);
-        sb.append("accY" + space + accY + newLine);
-        sb.append("accZ" + space + accZ + newLine);
-        sb.append("vSum" + space + vSum + newLine);
-        sb.append(newLine);
-        sb.append("queueSize" + space + queueSize + newLine);
-        sb.append("dataPointsCollected" + space + dataPointsCollected + newLine);
-        sb.append("collectionRateMs" + space + collectionRateMs + newLine);
-        sb.append("ws messages" + space + messages + newLine);
-        sb.append("frequency" + space + frequency + " Hz");
+        sb.append("index=" + space + userID + NEW_LINE);
+        sb.append("timeMs=" + space + timeMs + NEW_LINE);
+        sb.append("accX=" + space + accX + NEW_LINE);
+        sb.append("accY=" + space + accY + NEW_LINE);
+        sb.append("accZ=" + space + accZ + NEW_LINE);
+        sb.append("vSum=" + space + vSum + NEW_LINE);
+        sb.append(NEW_LINE);
+        sb.append("queueSize=" + space + queueSize + NEW_LINE);
+        sb.append("dataPointsCollected=" + space + dataPointsCollected + NEW_LINE);
+        sb.append("collectionRateMs=" + space + collectionRateMs + NEW_LINE);
+        sb.append("ws messages=" + space + messages + NEW_LINE);
+        sb.append("current file path=" + space + currentRecordingAbsolutePath + NEW_LINE);
+        sb.append("frequency=" + space + frequency + " Hz");
         return sb.toString();
+    }
+
+
+    public Spanned toHTMLString() {
+        String str = toString();
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String line : str.split("\n")) {
+            if (line.trim().equals("")) {
+                continue;
+            }
+            String[] pairs = line.split("=");
+            stringBuilder.append(getKeyColor(pairs[0]) + "  :  " + getValueColor(pairs[1]) + "<br><br>");
+        }
+        return Html.fromHtml(stringBuilder.toString());
+    }
+
+
+    private String getKeyColor(String text) {
+        return getColoredSpanned(text, COLOR_PINK);
+    }
+
+    private String getValueColor(String text) {
+        return getColoredSpanned(text, COLOR_YELLOW);
+    }
+
+    private String getColoredSpanned(String text, String color) {
+        String input = "<font color=" + color + ">" + text + "</font>";
+        return input;
     }
 }
