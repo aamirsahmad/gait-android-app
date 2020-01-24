@@ -31,6 +31,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -53,6 +54,7 @@ public class SensorService extends Service implements SensorEventListener {
     Defaults defaults;
 
     FileWriter writer;
+    BufferedWriter bufferedWriter;
     File myDir;
 
     ExecutorService threadPool;
@@ -137,12 +139,14 @@ public class SensorService extends Service implements SensorEventListener {
     private void createRecordingFile() {
         try {
             myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
+            System.out.println("myDir.getAbsolutePath()" + myDir.getAbsolutePath());
             System.out.println("myDir.canRead()" + myDir.canRead());
             String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
             file = new File(myDir, FILENAME);
             Log.d(TAG, "Writing to " + file.getAbsolutePath());
             writer = new FileWriter(file);
-            writer.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
+            bufferedWriter = new BufferedWriter(writer);
+            bufferedWriter.write("index,userID,timeMs,accX,accY,accZ,vSum\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -205,7 +209,8 @@ public class SensorService extends Service implements SensorEventListener {
                         logData.setvSum(vsum);
                     }
 
-                    writer.write(accData + "\n");
+                    bufferedWriter.write(accData + "\n");
+
                     int socketMessage = -1;
                     if (stream) {
                         socketMessage = socket.getMessagesWebSocket();
