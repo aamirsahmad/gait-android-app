@@ -6,7 +6,7 @@ import android.content.pm.PackageManager;
 
 import androidx.core.app.ActivityCompat;
 
-public class ActivityHelper {
+public class PermissionHelper {
     public static void getPermissionsFromAndroidOS(Activity activity) {
         int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
 

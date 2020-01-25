@@ -21,6 +21,7 @@ import androidx.preference.PreferenceManager;
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.WebSocketEcho;
+import com.example.gaitanalyzer.eventbus.ChronometerEvent;
 import com.example.gaitanalyzer.eventbus.LogEvent;
 import com.example.gaitanalyzer.logs.LogData;
 import com.example.gaitanalyzer.utils.Defaults;
@@ -72,13 +73,13 @@ public class SensorService extends Service implements SensorEventListener {
     private LogData logData;
     private File file;
 
+    Thread timer;
+    private boolean timerRunning;
+
+
     @Override
     public void onCreate() {
         super.onCreate();
-
-//        ActivityHelper.getPermissionsFromAndroidOS(this);
-//        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-//        myDir.mkdirs();
     }
 
     @Override
@@ -109,6 +110,10 @@ public class SensorService extends Service implements SensorEventListener {
                 .build();
 
         EventBus.getDefault().register(this);
+
+        timerRunning = true;
+        timer = new Thread(new TimeElapsed());
+        timer.start();
 
         startForeground(1, notification);
 
@@ -169,6 +174,11 @@ public class SensorService extends Service implements SensorEventListener {
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        if (timer != null) {
+            timerRunning = false;
+            timer.interrupt();
         }
 
         super.onDestroy();
@@ -294,5 +304,21 @@ public class SensorService extends Service implements SensorEventListener {
     public void onLogEvent(LogEvent event) {
         logData = event.getLogData();
         logData.setCurrentRecordingAbsolutePath(file.getAbsolutePath());
+    }
+
+    class TimeElapsed implements Runnable {
+        long elapsedTime = 0;
+
+        @Override
+        public void run() {
+            while (timerRunning) {
+                try {
+                    EventBus.getDefault().post(new ChronometerEvent(++elapsedTime));
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

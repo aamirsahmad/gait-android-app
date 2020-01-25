@@ -5,19 +5,28 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
+import android.os.SystemClock;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Chronometer;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
+import com.example.gaitanalyzer.eventbus.ChronometerEvent;
 import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
-import com.example.gaitanalyzer.utils.ActivityHelper;
 import com.example.gaitanalyzer.utils.Defaults;
+import com.example.gaitanalyzer.utils.PermissionHelper;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 
@@ -45,6 +54,10 @@ public class MainActivity extends AppCompatActivity {
     String ip;
     String port;
 
+    private Chronometer chronometer;
+    private boolean isChronometerRunning;
+    private long chronometerPause;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -57,8 +70,26 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        chronometer = findViewById(R.id.chronometer);
+        chronometer.setFormat("Elapsed Time: %s");
 
         recordingButton = findViewById(R.id.play_pause);
+
+//        recordingButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                MaterialPlayPauseDrawable.State newState;
+//                if (recordingButton.getState() == MaterialPlayPauseDrawable.State.Play) {
+//                    newState = MaterialPlayPauseDrawable.State.Pause;
+//                    startRecordingService(v);
+//                }
+//                else {
+//                    newState = MaterialPlayPauseDrawable.State.Play;
+//                    stopRecordingService(v);
+//                }
+//                recordingButton.setState(newState);
+//            }
+//        });
 
         // Preferences
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -66,9 +97,11 @@ public class MainActivity extends AppCompatActivity {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
 
-        ActivityHelper.getPermissionsFromAndroidOS(this);
+        PermissionHelper.getPermissionsFromAndroidOS(this);
         myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
         myDir.mkdirs();
+
+        EventBus.getDefault().register(this);
     }
 
     public void onClickPlayPause(View view) {
@@ -79,7 +112,6 @@ public class MainActivity extends AppCompatActivity {
             currentState = MaterialPlayPauseDrawable.State.Pause;
             startRecordingService(view);
             editor.putString("PlayPauseBtn", "Pause");
-
         } else {
             currentState = MaterialPlayPauseDrawable.State.Play;
             stopRecordingService(view);
@@ -99,6 +131,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
+        Toast.makeText(this, "onResume",
+                Toast.LENGTH_LONG).show();
         super.onResume();
         defaults = new Defaults(this);
 
@@ -108,6 +142,8 @@ public class MainActivity extends AppCompatActivity {
         if (sharedPreferences.getString("PlayPauseBtn", "").equals("Pause")) {
             recordingButton.setState(MaterialPlayPauseDrawable.State.Pause);
         }
+
+        chronometer.setBase(SystemClock.elapsedRealtime() + elapsedTimeOfService);
     }
 
     @Override
@@ -133,11 +169,13 @@ public class MainActivity extends AppCompatActivity {
         Intent serviceIntent = new Intent(this, SensorService.class);
         serviceIntent.putExtra("msg", "Collecting gait data ...");
         ContextCompat.startForegroundService(this, serviceIntent);
+        startChronometer();
     }
 
     public void stopRecordingService(View v) {
         Intent serviceIntent = new Intent(this, SensorService.class);
         stopService(serviceIntent);
+        stopChronometer(v);
         if (wakeLock.isHeld()) {
             wakeLock.release();
         }
@@ -151,12 +189,42 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        chronometerPause = chronometer.getBase();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        EventBus.getDefault().unregister(this);
     }
 
+    public void startChronometer() {
+        if (!isChronometerRunning) {
+            chronometer.setBase(SystemClock.elapsedRealtime() + elapsedTimeOfService);
+            chronometer.start();
+            isChronometerRunning = true;
+        }
+    }
 
+    public void stopChronometer(View v) {
+        long elapsedTime = SystemClock.elapsedRealtime() - chronometer.getBase();
+        Toast.makeText(this, "Elapsed time of trial " + elapsedTime / 1000,
+                Toast.LENGTH_LONG).show();
+        chronometer.stop();
+        isChronometerRunning = false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onLogEvent(ChronometerEvent event) {
+        System.out.println("Chronometer " + event.getTime());
+        Log.d(TAG, "Chronometer " + event.getTime());
+        elapsedTimeOfService = event.getTime();
+    }
+
+    long elapsedTimeOfService;
 }

@@ -14,7 +14,18 @@
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="@+id/serverReply"
         tools:layout_editor_absoluteX="4dp"></include>
-    
+
+    <Chronometer
+        android:id="@+id/chronometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="316dp"
+        android:textSize="30sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton
         android:id="@+id/play_pause"
         android:layout_width="120dp"
