@@ -22,6 +22,7 @@ import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.PermissionHelper;
+import com.example.gaitanalyzer.utils.TimeUtil;
 
 import java.io.File;
 
@@ -211,7 +212,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void stopChronometer(View v) {
         Log.d(TAG, "stopChronometer");
-        Toast.makeText(this, "Elapsed time of trial " + (SensorService.elapsedTimeS - 1),
+        String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS - 1);
+        Toast.makeText(this, "Elapsed time of trial is " + readableTime,
                 Toast.LENGTH_LONG).show();
         chronometer.stop();
         isChronometerRunning = false;
