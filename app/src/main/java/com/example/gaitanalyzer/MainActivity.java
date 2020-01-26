@@ -18,15 +18,10 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.example.gaitanalyzer.eventbus.ChronometerEvent;
 import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.PermissionHelper;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 
@@ -56,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Chronometer chronometer;
     private boolean isChronometerRunning;
-    private long chronometerPause;
+    private long startTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         chronometer = findViewById(R.id.chronometer);
-        chronometer.setFormat("Elapsed Time: %s");
+        chronometer.setFormat("%s");
 
         recordingButton = findViewById(R.id.play_pause);
 
@@ -100,8 +95,6 @@ public class MainActivity extends AppCompatActivity {
         PermissionHelper.getPermissionsFromAndroidOS(this);
         myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
         myDir.mkdirs();
-
-        EventBus.getDefault().register(this);
     }
 
     public void onClickPlayPause(View view) {
@@ -131,19 +124,25 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        Toast.makeText(this, "onResume",
-                Toast.LENGTH_LONG).show();
         super.onResume();
         defaults = new Defaults(this);
 
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         refreshPreferences();
+
         // update recording button state
         if (sharedPreferences.getString("PlayPauseBtn", "").equals("Pause")) {
             recordingButton.setState(MaterialPlayPauseDrawable.State.Pause);
         }
 
-        chronometer.setBase(SystemClock.elapsedRealtime() + elapsedTimeOfService);
+        if (sharedPreferences.getBoolean("isChronometerRunning", false)) {
+            isChronometerRunning = true;
+            startTime = SystemClock.elapsedRealtime() - (SensorService.elapsedTimeS * 1000);
+            Log.d(TAG, "SensorService.elapsedTimeS " + SensorService.elapsedTimeS);
+            chronometer.setBase(startTime);
+            chronometer.start();
+        }
+        Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
     }
 
     @Override
@@ -189,29 +188,36 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        chronometerPause = chronometer.getBase();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().unregister(this);
     }
 
     public void startChronometer() {
+        Log.d(TAG, "startChronometer");
+
         if (!isChronometerRunning) {
-            chronometer.setBase(SystemClock.elapsedRealtime() + elapsedTimeOfService);
+            startTime = SystemClock.elapsedRealtime() + SensorService.elapsedTimeS;
+            chronometer.setBase(startTime);
             chronometer.start();
             isChronometerRunning = true;
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean("isChronometerRunning", isChronometerRunning);
+            editor.commit(); // commit changes
         }
     }
 
     public void stopChronometer(View v) {
-        long elapsedTime = SystemClock.elapsedRealtime() - chronometer.getBase();
-        Toast.makeText(this, "Elapsed time of trial " + elapsedTime / 1000,
+        Log.d(TAG, "stopChronometer");
+        Toast.makeText(this, "Elapsed time of trial " + (SensorService.elapsedTimeS - 1),
                 Toast.LENGTH_LONG).show();
         chronometer.stop();
         isChronometerRunning = false;
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean("isChronometerRunning", isChronometerRunning);
+        editor.commit();
     }
 
     @Override
@@ -219,12 +225,13 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onLogEvent(ChronometerEvent event) {
-        System.out.println("Chronometer " + event.getTime());
-        Log.d(TAG, "Chronometer " + event.getTime());
-        elapsedTimeOfService = event.getTime();
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+
     }
 
-    long elapsedTimeOfService;
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+    }
 }

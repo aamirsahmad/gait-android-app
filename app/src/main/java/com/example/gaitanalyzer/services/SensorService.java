@@ -21,7 +21,6 @@ import androidx.preference.PreferenceManager;
 import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.WebSocketEcho;
-import com.example.gaitanalyzer.eventbus.ChronometerEvent;
 import com.example.gaitanalyzer.eventbus.LogEvent;
 import com.example.gaitanalyzer.logs.LogData;
 import com.example.gaitanalyzer.utils.Defaults;
@@ -306,14 +305,14 @@ public class SensorService extends Service implements SensorEventListener {
         logData.setCurrentRecordingAbsolutePath(file.getAbsolutePath());
     }
 
-    class TimeElapsed implements Runnable {
-        long elapsedTime = 0;
+    public static long elapsedTimeS = 0;
 
+    class TimeElapsed implements Runnable {
         @Override
         public void run() {
             while (timerRunning) {
                 try {
-                    EventBus.getDefault().post(new ChronometerEvent(++elapsedTime));
+                    elapsedTimeS++;
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
