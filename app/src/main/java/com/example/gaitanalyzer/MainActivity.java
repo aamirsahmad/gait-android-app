@@ -71,21 +71,6 @@ public class MainActivity extends AppCompatActivity {
 
         recordingButton = findViewById(R.id.play_pause);
 
-//        recordingButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                MaterialPlayPauseDrawable.State newState;
-//                if (recordingButton.getState() == MaterialPlayPauseDrawable.State.Play) {
-//                    newState = MaterialPlayPauseDrawable.State.Pause;
-//                    startRecordingService(v);
-//                }
-//                else {
-//                    newState = MaterialPlayPauseDrawable.State.Play;
-//                    stopRecordingService(v);
-//                }
-//                recordingButton.setState(newState);
-//            }
-//        });
 
         // Preferences
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -136,12 +121,14 @@ public class MainActivity extends AppCompatActivity {
             recordingButton.setState(MaterialPlayPauseDrawable.State.Pause);
         }
 
+        startTime = SystemClock.elapsedRealtime() - (SensorService.elapsedTimeS * 1000);
         if (sharedPreferences.getBoolean("isChronometerRunning", false)) {
             isChronometerRunning = true;
-            startTime = SystemClock.elapsedRealtime() - (SensorService.elapsedTimeS * 1000);
             Log.d(TAG, "SensorService.elapsedTimeS " + SensorService.elapsedTimeS);
             chronometer.setBase(startTime);
             chronometer.start();
+        } else{
+            chronometer.setBase(startTime);
         }
         Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
     }
@@ -200,7 +187,9 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "startChronometer");
 
         if (!isChronometerRunning) {
-            startTime = SystemClock.elapsedRealtime() + SensorService.elapsedTimeS;
+            startTime = SystemClock.elapsedRealtime();
+//            Toast.makeText(this, "Start time is" + SensorService.elapsedTimeS,
+//                    Toast.LENGTH_LONG).show();
             chronometer.setBase(startTime);
             chronometer.start();
             isChronometerRunning = true;
@@ -213,8 +202,8 @@ public class MainActivity extends AppCompatActivity {
     public void stopChronometer(View v) {
         Log.d(TAG, "stopChronometer");
         String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS - 1);
-        Toast.makeText(this, "Elapsed time of trial is " + readableTime,
-                Toast.LENGTH_LONG).show();
+//        Toast.makeText(this, "Elapsed time of trial is " + readableTime,
+//                Toast.LENGTH_LONG).show();
         chronometer.stop();
         isChronometerRunning = false;
         SharedPreferences.Editor editor = sharedPreferences.edit();
