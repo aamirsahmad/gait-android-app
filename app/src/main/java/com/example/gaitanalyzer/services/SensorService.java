@@ -175,10 +175,8 @@ public class SensorService extends Service implements SensorEventListener {
             e.printStackTrace();
         }
 
-        if (timer != null) {
-            timerRunning = false;
-            timer.interrupt();
-        }
+        elapsedTimeS = 0;
+        timerRunning = false;
 
         super.onDestroy();
     }
