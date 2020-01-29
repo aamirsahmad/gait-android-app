@@ -32,4 +32,8 @@
     <string name="port">80</string>
     <string name="stream">false</string>
     <string name="userId">unknown</string>
+    <string name="card_text">Last Trial\'s Information</string>
+    <string name="share_button">Share</string>
+    <string name="delete_button">Delete</string>
+    <string name="open_button">Open</string>
 </resources>
