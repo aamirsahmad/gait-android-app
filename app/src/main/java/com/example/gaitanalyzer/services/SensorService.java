@@ -72,13 +72,13 @@ public class SensorService extends Service implements SensorEventListener {
     private LogData logData;
     private File file;
 
+    Thread timer;
+    private boolean timerRunning;
+
+
     @Override
     public void onCreate() {
         super.onCreate();
-
-//        ActivityHelper.getPermissionsFromAndroidOS(this);
-//        myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
-//        myDir.mkdirs();
     }
 
     @Override
@@ -109,6 +109,10 @@ public class SensorService extends Service implements SensorEventListener {
                 .build();
 
         EventBus.getDefault().register(this);
+
+        timerRunning = true;
+        timer = new Thread(new TimeElapsed());
+        timer.start();
 
         startForeground(1, notification);
 
@@ -170,6 +174,9 @@ public class SensorService extends Service implements SensorEventListener {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        elapsedTimeS = 0;
+        timerRunning = false;
 
         super.onDestroy();
     }
@@ -294,5 +301,21 @@ public class SensorService extends Service implements SensorEventListener {
     public void onLogEvent(LogEvent event) {
         logData = event.getLogData();
         logData.setCurrentRecordingAbsolutePath(file.getAbsolutePath());
+    }
+
+    public static long elapsedTimeS = 0;
+
+    class TimeElapsed implements Runnable {
+        @Override
+        public void run() {
+            while (timerRunning) {
+                try {
+                    elapsedTimeS++;
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }
