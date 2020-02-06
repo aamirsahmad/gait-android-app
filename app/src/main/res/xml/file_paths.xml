@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!--    <external-path name="external_files" path="gait_data" />-->
+    <external-path
+        name="gait_data"
+        path="Documents/gait_data/" />
+</paths>

@@ -139,7 +139,8 @@ public class LogData {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         String space = "\t\t\t\t";
-        sb.append("index=" + space + userID + NEW_LINE);
+        sb.append("index=" + space + index + NEW_LINE);
+        sb.append("userID=" + space + userID + NEW_LINE);
         sb.append("timeMs=" + space + timeMs + NEW_LINE);
         sb.append("accX=" + space + accX + NEW_LINE);
         sb.append("accY=" + space + accY + NEW_LINE);

@@ -1,9 +1,9 @@
 package com.example.gaitanalyzer.utils;
 
 public class TimeUtil {
-    public static String getReadableTime(long elapsedTime) {
-        long hours = (int) (elapsedTime / 3600);
-        elapsedTime = elapsedTime % 3600;
-        return String.format("%d : %d : %02d", hours, elapsedTime / 60, elapsedTime % 60);
+    public static String getReadableTime(long elapsedTimeInSeconds) {
+        long hours = (int) (elapsedTimeInSeconds / 3600);
+        elapsedTimeInSeconds = elapsedTimeInSeconds % 3600;
+        return String.format("%d : %d : %02d", hours, elapsedTimeInSeconds / 60, elapsedTimeInSeconds % 60);
     }
 }

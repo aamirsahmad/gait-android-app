@@ -83,7 +83,7 @@
                 app:layout_constraintStart_toStartOf="parent" />
 
             <TextView
-                android:id="@+id/textView6"
+                android:id="@+id/duration"
                 style="@style/TextAppearance.MaterialComponents.Body1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -91,10 +91,10 @@
                 android:layout_marginTop="16dp"
                 android:text="8min"
                 app:layout_constraintStart_toEndOf="@+id/textView5"
-                app:layout_constraintTop_toBottomOf="@+id/textView4" />
+                app:layout_constraintTop_toBottomOf="@+id/username" />
 
             <TextView
-                android:id="@+id/textView4"
+                android:id="@+id/username"
                 style="@style/TextAppearance.MaterialComponents.Body1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -135,7 +135,7 @@
                 tools:layout_editor_absoluteX="20dp" />
 
             <TextView
-                android:id="@+id/textView8"
+                android:id="@+id/filePath"
                 style="@style/TextAppearance.MaterialComponents.Body1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -143,17 +143,18 @@
                 android:layout_marginTop="16dp"
                 android:text="file/filename.csv"
                 app:layout_constraintStart_toEndOf="@+id/textView7"
-                app:layout_constraintTop_toBottomOf="@+id/textView6" />
+                app:layout_constraintTop_toBottomOf="@+id/duration" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/material_icon_button2"
+                android:id="@+id/openFile"
                 style="@style/Widget.AppCompat.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:onClick="openTextFile"
                 android:text="@string/open_button"
                 android:textSize="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/material_icon_button3"
+                app:layout_constraintEnd_toStartOf="@+id/deleteFile"
                 app:layout_constraintHorizontal_bias="0.507"
                 app:layout_constraintStart_toEndOf="@+id/material_icon_button" />
 
@@ -163,23 +164,25 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
+                android:onClick="shareTextFile"
                 android:text="@string/share_button"
                 android:textSize="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/material_icon_button3"
+                android:id="@+id/deleteFile"
                 style="@style/Widget.AppCompat.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="62dp"
+                android:onClick="deleteTextFile"
                 android:text="@string/delete_button"
                 android:textSize="12dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.519"
-                app:layout_constraintStart_toStartOf="@+id/textView6" />
+                app:layout_constraintStart_toStartOf="@+id/duration" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>

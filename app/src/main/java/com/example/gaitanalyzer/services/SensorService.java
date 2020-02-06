@@ -22,6 +22,7 @@ import com.example.gaitanalyzer.MainActivity;
 import com.example.gaitanalyzer.R;
 import com.example.gaitanalyzer.WebSocketEcho;
 import com.example.gaitanalyzer.eventbus.LogEvent;
+import com.example.gaitanalyzer.infocard.InfoCardData;
 import com.example.gaitanalyzer.logs.LogData;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.TimeSeriesUtil;
@@ -75,6 +76,8 @@ public class SensorService extends Service implements SensorEventListener {
     Thread timer;
     private boolean timerRunning;
 
+    private InfoCardData infoCardData;
+
 
     @Override
     public void onCreate() {
@@ -86,6 +89,8 @@ public class SensorService extends Service implements SensorEventListener {
         // get sensor manager on starting the service
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         this.defaults = new Defaults(getApplicationContext());
+        infoCardData = InfoCardData.getInstance();
+        infoCardData.setUserID(defaults.getUserId());
         refreshPreferences();
         createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -147,6 +152,7 @@ public class SensorService extends Service implements SensorEventListener {
             System.out.println("myDir.canRead()" + myDir.canRead());
             String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
             file = new File(myDir, FILENAME);
+            infoCardData.setFilePath(file.getAbsolutePath());
             Log.d(TAG, "Writing to " + file.getAbsolutePath());
             writer = new FileWriter(file);
             bufferedWriter = new BufferedWriter(writer);
