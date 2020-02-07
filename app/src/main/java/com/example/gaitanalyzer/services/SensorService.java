@@ -90,7 +90,7 @@ public class SensorService extends Service implements SensorEventListener {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         this.defaults = new Defaults(getApplicationContext());
         infoCardData = InfoCardData.getInstance();
-        infoCardData.setUserID(defaults.getUserId());
+        infoCardData.setUserID(sharedPreferences.getString("user_id", defaults.getUserId()));
         refreshPreferences();
         createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);

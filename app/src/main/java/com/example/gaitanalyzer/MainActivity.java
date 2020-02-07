@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView duration;
     private TextView filePath;
     private InfoCardData infoCardData;
+    private Button shareButton;
+    private Button openButton;
+    private Button deleteButton;
 
 
     @Override
@@ -88,7 +92,12 @@ public class MainActivity extends AppCompatActivity {
         username = findViewById(R.id.username);
         duration = findViewById(R.id.duration);
         filePath = findViewById(R.id.filePath);
-        clearInfoCard();
+        updateInfoCard("N/A", "N/A", "N/A");
+
+        shareButton = findViewById(R.id.shareFile);
+        deleteButton = findViewById(R.id.openFile);
+        openButton = findViewById(R.id.deleteFile);
+
 
         // Preferences
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -101,30 +110,38 @@ public class MainActivity extends AppCompatActivity {
         myDir.mkdirs();
     }
 
-    private long elapsedTimeMs = 0;
-
     public void onClickPlayPause(View view) {
         MaterialPlayPauseDrawable.State currentState = recordingButton.getState();
         SharedPreferences.Editor editor = sharedPreferences.edit();
         if (currentState == MaterialPlayPauseDrawable.State.Play) {
             currentState = MaterialPlayPauseDrawable.State.Pause;
-            elapsedTimeMs = System.currentTimeMillis();
+            clearInfoCard();
             startRecordingService(view);
             editor.putString("PlayPauseBtn", "Pause");
+
+            setInfoCardButtons(false);
         } else {
             currentState = MaterialPlayPauseDrawable.State.Play;
-            stopRecordingService(view);
-            elapsedTimeMs = System.currentTimeMillis() - elapsedTimeMs;
-            String readableElapsedTime = TimeUtil.getReadableTime(elapsedTimeMs / 1000);
-            Log.d(TAG, "elapsedTimeMs = " + elapsedTimeMs);
-            Log.d(TAG, "readableElapsedTime = " + readableElapsedTime);
-            infoCardData.setDuration(readableElapsedTime);
-            editor.putString("PlayPauseBtn", "Play");
+
+            String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS);
+            Log.d(TAG, "readableTime = " + readableTime);
+            infoCardData.setDuration(readableTime);
             updateInfoCard();
 
+            stopRecordingService(view);
+
+            editor.putString("PlayPauseBtn", "Play");
+
+            setInfoCardButtons(true);
         }
         editor.commit(); // commit changes
         recordingButton.setState(currentState);
+    }
+
+    private void setInfoCardButtons(boolean b) {
+        shareButton.setEnabled(b);
+        openButton.setEnabled(b);
+        deleteButton.setEnabled(b);
     }
 
 
@@ -159,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
             chronometer.setBase(startTime);
         }
         Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
+        updateInfoCard("N/A", "N/A", "N/A");
     }
 
     @Override
@@ -216,8 +234,6 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isChronometerRunning) {
             startTime = SystemClock.elapsedRealtime();
-//            Toast.makeText(this, "Start time is" + SensorService.elapsedTimeS,
-//                    Toast.LENGTH_LONG).show();
             chronometer.setBase(startTime);
             chronometer.start();
             isChronometerRunning = true;
@@ -229,9 +245,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void stopChronometer(View v) {
         Log.d(TAG, "stopChronometer");
-        String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS - 1);
-//        Toast.makeText(this, "Elapsed time of trial is " + readableTime,
-//                Toast.LENGTH_LONG).show();
         chronometer.stop();
         isChronometerRunning = false;
         SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -256,7 +269,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); // for file manager use case
-    // TODO
     public void openTextFile(View view) throws FileNotFoundException {
         File initialFile = new File(infoCardData.getFilePath());
         if (!initialFile.canRead()) {
@@ -272,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
         intent.setType("text/csv");
         intent.putExtra(Intent.EXTRA_STREAM, uri);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(Intent.createChooser(intent, "Share file..."));
+        startActivity(Intent.createChooser(intent, "Open file..."));
     }
 
     public void shareTextFile(View view) {
@@ -308,7 +320,12 @@ public class MainActivity extends AppCompatActivity {
         username.setText(infoCardData.getUserID());
         duration.setText(infoCardData.getDuration());
         String filePathStr = infoCardData.getFilePath();
-        filePath.setText(filePathStr.substring(filePathStr.indexOf("Documents")));
+        if (filePathStr == null) {
+            return;
+        }
+        if (filePathStr.contains("Documents")) {
+            filePath.setText(filePathStr.substring(filePathStr.indexOf("Documents")));
+        }
     }
 
     private void updateInfoCard(String usernameStr, String durationStr, String filePathStr) {
@@ -319,6 +336,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void clearInfoCard() {
         infoCardData.clear();
-        updateInfoCard("Unknown", "N/A", "N/A");
+        updateInfoCard("N/A", "N/A", "N/A");
     }
 }
