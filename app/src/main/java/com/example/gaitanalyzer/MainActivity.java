@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private Button shareButton;
     private Button openButton;
     private Button deleteButton;
+    private Gson gson = new Gson();
 
 
     @Override
@@ -126,11 +127,10 @@ public class MainActivity extends AppCompatActivity {
             infoCardData.setDuration(readableTime);
 
             // update sharedPreferences with latest trial info
-            Gson gson = new Gson();
-            String json = gson.toJson(infoCardData);
-            editor.putString("InfoCardData", json);
+            String infoCardDataJson = gson.toJson(infoCardData);
+            editor.putString("InfoCardData", infoCardDataJson);
 
-            editor.commit(); // commit changes
+            editor.apply(); // commit changes
 
             updateInfoCard(infoCardData);
 
@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
 
             setInfoCardButtons(true);
         }
-        editor.commit(); // commit changes
+        editor.apply(); // commit changes
         recordingButton.setState(currentState);
     }
 
@@ -178,15 +178,15 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "SensorService.elapsedTimeS " + SensorService.elapsedTimeS);
             chronometer.setBase(startTime);
             chronometer.start();
-        } else{
+        } else {
             chronometer.setBase(startTime);
         }
         Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
 
         InfoCardData infoCardData = getInfoCardDataFromPreferences();
-        if(infoCardData == null){
+        if (infoCardData == null) {
             return;
-        } else{
+        } else {
             // username, duration, filepath
             updateInfoCard(infoCardData);
         }
@@ -252,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
             isChronometerRunning = true;
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putBoolean("isChronometerRunning", isChronometerRunning);
-            editor.commit(); // commit changes
+            editor.apply(); // commit changes
         }
     }
 
@@ -263,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("isChronometerRunning", isChronometerRunning);
 
-        editor.commit();
+        editor.apply();
     }
 
     @Override
@@ -285,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void openTextFile(View view) throws FileNotFoundException {
         InfoCardData infoCardData = getInfoCardDataFromPreferences();
-        if(infoCardData == null){
+        if (infoCardData == null) {
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
@@ -295,14 +295,14 @@ public class MainActivity extends AppCompatActivity {
                 "com.example.gaitanalyzer.provider", //(use your app signature + ".provider" )
                 initialFile);
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(uri,"text/csv");
+        intent.setDataAndType(uri, "text/csv");
         intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(intent, "Open file..."));
     }
 
     public void shareTextFile(View view) {
         InfoCardData infoCardData = getInfoCardDataFromPreferences();
-        if(infoCardData == null){
+        if (infoCardData == null) {
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
@@ -318,27 +318,27 @@ public class MainActivity extends AppCompatActivity {
         startActivity(Intent.createChooser(intent, "Share file..."));
     }
 
-    private InfoCardData getInfoCardDataFromPreferences(){
+    private InfoCardData getInfoCardDataFromPreferences() {
         String infoCardDataStr = sharedPreferences.getString("InfoCardData", "");
 
-        if(infoCardDataStr.equals("")){
+        if (infoCardDataStr.equals("")) {
             clearInfoCard();
             return null;
         }
-        Gson gson = new Gson();
         InfoCardData infoCardData = gson.fromJson(infoCardDataStr, InfoCardData.class);
 
         File file = new File(String.valueOf(infoCardData.getFilePath()));
-        if(!file.exists()) {
+        if (!file.exists()) {
             clearInfoCard();
             return null;
         }
 
         return infoCardData;
     }
+
     public void deleteTextFile(View view) {
         InfoCardData infoCardData = getInfoCardDataFromPreferences();
-        if(infoCardData == null){
+        if (infoCardData == null) {
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
@@ -350,13 +350,17 @@ public class MainActivity extends AppCompatActivity {
     private void updateInfoCard(InfoCardData infoCardData) {
         username.setText(infoCardData.getUserID());
         duration.setText(infoCardData.getDuration());
-        filePath.setText(infoCardData.getFilePath());
+
+        String path = infoCardData.getFilePath();
+        if (path != null && path.contains("Documents")) {
+            filePath.setText(path.substring(path.indexOf("Documents")));
+        }
     }
 
     private void clearInfoCard() {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putString("InfoCardData", "");
-        editor.commit();
+        editor.apply();
 
         username.setText("N/A");
         duration.setText("N/A");
