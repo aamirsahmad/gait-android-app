@@ -28,6 +28,7 @@ import com.example.gaitanalyzer.services.SensorService;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.PermissionHelper;
 import com.example.gaitanalyzer.utils.TimeUtil;
+import com.google.gson.Gson;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -92,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
         username = findViewById(R.id.username);
         duration = findViewById(R.id.duration);
         filePath = findViewById(R.id.filePath);
-        updateInfoCard("N/A", "N/A", "N/A");
 
         shareButton = findViewById(R.id.shareFile);
         deleteButton = findViewById(R.id.openFile);
@@ -115,18 +115,24 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         if (currentState == MaterialPlayPauseDrawable.State.Play) {
             currentState = MaterialPlayPauseDrawable.State.Pause;
-            clearInfoCard();
             startRecordingService(view);
             editor.putString("PlayPauseBtn", "Pause");
 
-            setInfoCardButtons(false);
         } else {
             currentState = MaterialPlayPauseDrawable.State.Play;
 
             String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS);
             Log.d(TAG, "readableTime = " + readableTime);
             infoCardData.setDuration(readableTime);
-            updateInfoCard();
+
+            // update sharedPreferences with latest trial info
+            Gson gson = new Gson();
+            String json = gson.toJson(infoCardData);
+            editor.putString("InfoCardData", json);
+
+            editor.commit(); // commit changes
+
+            updateInfoCard(infoCardData);
 
             stopRecordingService(view);
 
@@ -176,7 +182,14 @@ public class MainActivity extends AppCompatActivity {
             chronometer.setBase(startTime);
         }
         Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
-        updateInfoCard("N/A", "N/A", "N/A");
+
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if(infoCardData == null){
+            return;
+        } else{
+            // username, duration, filepath
+            updateInfoCard(infoCardData);
+        }
     }
 
     @Override
@@ -269,31 +282,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); // for file manager use case
+
     public void openTextFile(View view) throws FileNotFoundException {
-        File initialFile = new File(infoCardData.getFilePath());
-        if (!initialFile.canRead()) {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if(infoCardData == null){
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
-
-        Intent intent = new Intent(Intent.ACTION_EDIT);
+        File initialFile = new File(infoCardData.getFilePath());
         Uri uri = FileProvider.getUriForFile(
                 MainActivity.this,
                 "com.example.gaitanalyzer.provider", //(use your app signature + ".provider" )
                 initialFile);
-        intent.setType("text/csv");
-        intent.putExtra(Intent.EXTRA_STREAM, uri);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri,"text/csv");
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(Intent.createChooser(intent, "Open file..."));
     }
 
     public void shareTextFile(View view) {
-        File initialFile = new File(infoCardData.getFilePath());
-        if (!initialFile.canRead()) {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if(infoCardData == null){
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
-
+        File initialFile = new File(infoCardData.getFilePath());
         Intent intent = new Intent(Intent.ACTION_SEND);
         Uri uri = FileProvider.getUriForFile(
                 MainActivity.this,
@@ -305,37 +318,49 @@ public class MainActivity extends AppCompatActivity {
         startActivity(Intent.createChooser(intent, "Share file..."));
     }
 
-    public void deleteTextFile(View view) {
+    private InfoCardData getInfoCardDataFromPreferences(){
+        String infoCardDataStr = sharedPreferences.getString("InfoCardData", "");
+
+        if(infoCardDataStr.equals("")){
+            clearInfoCard();
+            return null;
+        }
+        Gson gson = new Gson();
+        InfoCardData infoCardData = gson.fromJson(infoCardDataStr, InfoCardData.class);
+
         File file = new File(String.valueOf(infoCardData.getFilePath()));
-        if (!file.delete()) {
-            Log.d(TAG, "file error");
+        if(!file.exists()) {
+            clearInfoCard();
+            return null;
+        }
+
+        return infoCardData;
+    }
+    public void deleteTextFile(View view) {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if(infoCardData == null){
             Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
             return;
         }
+        File file = new File(String.valueOf(infoCardData.getFilePath()));
+        file.delete();
         clearInfoCard();
-        Toast.makeText(this, "File successfully deleted", Toast.LENGTH_LONG).show();
     }
 
-    private void updateInfoCard() {
+    private void updateInfoCard(InfoCardData infoCardData) {
         username.setText(infoCardData.getUserID());
         duration.setText(infoCardData.getDuration());
-        String filePathStr = infoCardData.getFilePath();
-        if (filePathStr == null) {
-            return;
-        }
-        if (filePathStr.contains("Documents")) {
-            filePath.setText(filePathStr.substring(filePathStr.indexOf("Documents")));
-        }
-    }
-
-    private void updateInfoCard(String usernameStr, String durationStr, String filePathStr) {
-        username.setText(usernameStr);
-        duration.setText(durationStr);
-        filePath.setText(filePathStr);
+        filePath.setText(infoCardData.getFilePath());
     }
 
     private void clearInfoCard() {
-        infoCardData.clear();
-        updateInfoCard("N/A", "N/A", "N/A");
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("InfoCardData", "");
+        editor.commit();
+
+        username.setText("N/A");
+        duration.setText("N/A");
+        filePath.setText("N/A");
+        setInfoCardButtons(false);
     }
 }
