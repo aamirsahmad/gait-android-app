@@ -2,6 +2,7 @@ package com.example.gaitanalyzer;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
@@ -10,21 +11,27 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.preference.PreferenceManager;
 
+import com.example.gaitanalyzer.infocard.InfoCardData;
 import com.example.gaitanalyzer.logs.LogActivity;
 import com.example.gaitanalyzer.services.SensorService;
 import com.example.gaitanalyzer.utils.Defaults;
 import com.example.gaitanalyzer.utils.PermissionHelper;
 import com.example.gaitanalyzer.utils.TimeUtil;
+import com.google.gson.Gson;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton;
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
@@ -54,6 +61,17 @@ public class MainActivity extends AppCompatActivity {
     private boolean isChronometerRunning;
     private long startTime = 0;
 
+    // Info card
+    private TextView username;
+    private TextView duration;
+    private TextView filePath;
+    private InfoCardData infoCardData;
+    private Button shareButton;
+    private Button openButton;
+    private Button deleteButton;
+    private Gson gson = new Gson();
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -71,6 +89,16 @@ public class MainActivity extends AppCompatActivity {
 
         recordingButton = findViewById(R.id.play_pause);
 
+        // Info card
+        infoCardData = InfoCardData.getInstance();
+        username = findViewById(R.id.username);
+        duration = findViewById(R.id.duration);
+        filePath = findViewById(R.id.filePath);
+
+        shareButton = findViewById(R.id.shareFile);
+        deleteButton = findViewById(R.id.openFile);
+        openButton = findViewById(R.id.deleteFile);
+
 
         // Preferences
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
@@ -86,19 +114,42 @@ public class MainActivity extends AppCompatActivity {
     public void onClickPlayPause(View view) {
         MaterialPlayPauseDrawable.State currentState = recordingButton.getState();
         SharedPreferences.Editor editor = sharedPreferences.edit();
-
         if (currentState == MaterialPlayPauseDrawable.State.Play) {
             currentState = MaterialPlayPauseDrawable.State.Pause;
             startRecordingService(view);
             editor.putString("PlayPauseBtn", "Pause");
+
         } else {
             currentState = MaterialPlayPauseDrawable.State.Play;
+
+            String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS);
+            Log.d(TAG, "readableTime = " + readableTime);
+            infoCardData.setDuration(readableTime);
+
+            // update sharedPreferences with latest trial info
+            String infoCardDataJson = gson.toJson(infoCardData);
+            editor.putString("InfoCardData", infoCardDataJson);
+
+            editor.apply(); // commit changes
+
+            updateInfoCard(infoCardData);
+
             stopRecordingService(view);
+
             editor.putString("PlayPauseBtn", "Play");
+
+            setInfoCardButtons(true);
         }
-        editor.commit(); // commit changes
+        editor.apply(); // commit changes
         recordingButton.setState(currentState);
     }
+
+    private void setInfoCardButtons(boolean b) {
+        shareButton.setEnabled(b);
+        openButton.setEnabled(b);
+        deleteButton.setEnabled(b);
+    }
+
 
     private void refreshPreferences() {
         refreshRate = Integer.parseInt(sharedPreferences.getString("sensor_refresh_rate", defaults.getRefreshRate()));
@@ -127,10 +178,18 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "SensorService.elapsedTimeS " + SensorService.elapsedTimeS);
             chronometer.setBase(startTime);
             chronometer.start();
-        } else{
+        } else {
             chronometer.setBase(startTime);
         }
         Log.d(TAG, "isChronometerRunning " + isChronometerRunning);
+
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if (infoCardData == null) {
+            return;
+        } else {
+            // username, duration, filepath
+            updateInfoCard(infoCardData);
+        }
     }
 
     @Override
@@ -188,27 +247,23 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isChronometerRunning) {
             startTime = SystemClock.elapsedRealtime();
-//            Toast.makeText(this, "Start time is" + SensorService.elapsedTimeS,
-//                    Toast.LENGTH_LONG).show();
             chronometer.setBase(startTime);
             chronometer.start();
             isChronometerRunning = true;
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putBoolean("isChronometerRunning", isChronometerRunning);
-            editor.commit(); // commit changes
+            editor.apply(); // commit changes
         }
     }
 
     public void stopChronometer(View v) {
         Log.d(TAG, "stopChronometer");
-        String readableTime = TimeUtil.getReadableTime(SensorService.elapsedTimeS - 1);
-//        Toast.makeText(this, "Elapsed time of trial is " + readableTime,
-//                Toast.LENGTH_LONG).show();
         chronometer.stop();
         isChronometerRunning = false;
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("isChronometerRunning", isChronometerRunning);
-        editor.commit();
+
+        editor.apply();
     }
 
     @Override
@@ -224,5 +279,92 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+    }
+
+    //        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); // for file manager use case
+
+    public void openTextFile(View view) throws FileNotFoundException {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if (infoCardData == null) {
+            Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
+            return;
+        }
+        File initialFile = new File(infoCardData.getFilePath());
+        Uri uri = FileProvider.getUriForFile(
+                MainActivity.this,
+                "com.example.gaitanalyzer.provider", //(use your app signature + ".provider" )
+                initialFile);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(uri, "text/csv");
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(intent, "Open file..."));
+    }
+
+    public void shareTextFile(View view) {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if (infoCardData == null) {
+            Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
+            return;
+        }
+        File initialFile = new File(infoCardData.getFilePath());
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        Uri uri = FileProvider.getUriForFile(
+                MainActivity.this,
+                "com.example.gaitanalyzer.provider",
+                initialFile);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_STREAM, uri);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(intent, "Share file..."));
+    }
+
+    private InfoCardData getInfoCardDataFromPreferences() {
+        String infoCardDataStr = sharedPreferences.getString("InfoCardData", "");
+
+        if (infoCardDataStr.equals("")) {
+            clearInfoCard();
+            return null;
+        }
+        InfoCardData infoCardData = gson.fromJson(infoCardDataStr, InfoCardData.class);
+
+        File file = new File(String.valueOf(infoCardData.getFilePath()));
+        if (!file.exists()) {
+            clearInfoCard();
+            return null;
+        }
+
+        return infoCardData;
+    }
+
+    public void deleteTextFile(View view) {
+        InfoCardData infoCardData = getInfoCardDataFromPreferences();
+        if (infoCardData == null) {
+            Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show();
+            return;
+        }
+        File file = new File(String.valueOf(infoCardData.getFilePath()));
+        file.delete();
+        clearInfoCard();
+    }
+
+    private void updateInfoCard(InfoCardData infoCardData) {
+        username.setText(infoCardData.getUserID());
+        duration.setText(infoCardData.getDuration());
+
+        String path = infoCardData.getFilePath();
+        if (path != null && path.contains("Documents")) {
+            filePath.setText(path.substring(path.indexOf("Documents")));
+        }
+    }
+
+    private void clearInfoCard() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("InfoCardData", "");
+        editor.apply();
+
+        username.setText("N/A");
+        duration.setText("N/A");
+        filePath.setText("N/A");
+        setInfoCardButtons(false);
     }
 }
