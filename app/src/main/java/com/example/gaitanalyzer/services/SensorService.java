@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -150,8 +151,7 @@ public class SensorService extends Service implements SensorEventListener {
             myDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "gait_data");
             System.out.println("myDir.getAbsolutePath()" + myDir.getAbsolutePath());
             System.out.println("myDir.canRead()" + myDir.canRead());
-            String FILENAME = "sensors_" + System.currentTimeMillis() + ".csv";
-            file = new File(myDir, FILENAME);
+            file = new File(myDir, getFileName());
             infoCardData.setFilePath(file.getAbsolutePath());
             Log.d(TAG, "Writing to " + file.getAbsolutePath());
             writer = new FileWriter(file);
@@ -162,8 +162,20 @@ public class SensorService extends Service implements SensorEventListener {
         }
     }
 
+    private String getFileName() {
+        String sensorType = "acc";
+        String pattern = "yyyy-MM-dd_HH.mm.ss";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        return userId + "_" + simpleDateFormat.format(new java.util.Date(System.currentTimeMillis())).replaceAll(" ", "_") + "_" + sensorType + ".csv";
+    }
+
     @Override
     public void onDestroy() {
+        try {
+            bufferedWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         mSensorManager.flush(this);
         mSensorManager.unregisterListener(this);
         EventBus.getDefault().unregister(this);
