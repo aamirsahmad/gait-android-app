@@ -79,4 +79,9 @@
 
     <!--    </PreferenceCategory>-->
 
+    <PreferenceCategory app:title="@string/version_header">
+        <Preference
+            android:title="Version"
+            android:summary="@string/versionName"></Preference>
+    </PreferenceCategory>
 </PreferenceScreen>
