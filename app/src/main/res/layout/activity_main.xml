@@ -145,7 +145,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="44dp"
                 android:layout_marginTop="148dp"
-                android:text="file/filename.csv"
+                android:text="Documents/gait_data/aa012312301_2020-02-11_18:54:21_acc.csv"
                 app:layout_constraintStart_toEndOf="@+id/textView7"
                 app:layout_constraintTop_toTopOf="parent" />
 
