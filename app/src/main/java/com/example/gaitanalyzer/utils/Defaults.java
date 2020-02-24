@@ -7,7 +7,7 @@ import com.example.gaitanalyzer.R;
 public class Defaults {
     Context context;
 
-    private String refreshRate;
+    private int refreshRate;
     private String hostname;
     private String port;
     private boolean stream;
@@ -16,14 +16,14 @@ public class Defaults {
     public Defaults(Context context) {
         this.context = context;
 
-        refreshRate = this.context.getResources().getString(R.string.refresh_rate);
+        refreshRate = Integer.parseInt(this.context.getResources().getString(R.string.refresh_rate));
         hostname = this.context.getResources().getString(R.string.hostname);
         port = this.context.getResources().getString(R.string.port);
         stream = Boolean.parseBoolean(this.context.getResources().getString(R.string.stream));
         userId = this.context.getResources().getString(R.string.userId);
     }
 
-    public String getRefreshRate() {
+    public int getRefreshRate() {
         return refreshRate;
     }
 

@@ -51,7 +51,7 @@ public class SensorService extends Service implements SensorEventListener {
     long rawAccelerometerEventsCount = 0;
     long accelerometerEventsCollected = 0;
     long prevAccelerometerEventCaptureTime = 0;
-    private final int collectionRateMs = 19; // todo move to settings
+    private int collectionRateMs;
     SharedPreferences sharedPreferences;
     Defaults defaults;
 
@@ -78,7 +78,7 @@ public class SensorService extends Service implements SensorEventListener {
     private boolean timerRunning;
 
     private InfoCardData infoCardData;
-
+    private int sampling_rate;
 
     @Override
     public void onCreate() {
@@ -92,6 +92,8 @@ public class SensorService extends Service implements SensorEventListener {
         this.defaults = new Defaults(getApplicationContext());
         infoCardData = InfoCardData.getInstance();
         infoCardData.setUserID(sharedPreferences.getString("user_id", defaults.getUserId()));
+        sampling_rate = sharedPreferences.getInt("sensor_refresh_rate", defaults.getRefreshRate());
+        computeCollectRateMs();
         refreshPreferences();
         createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -127,6 +129,13 @@ public class SensorService extends Service implements SensorEventListener {
         }
 
         return START_NOT_STICKY;
+    }
+
+    private void computeCollectRateMs() {
+        this.collectionRateMs = (int) ((1.0/(double)this.sampling_rate) * 1000.0);
+        this.collectionRateMs--; // ensure correct result
+        Log.d(TAG, "computeCollectRateMs:  " + collectionRateMs);
+//        Log.d(TAG, "computeCollectRateMs: sampling rate " + this.sampling_rate);
     }
 
     private void initStreaming() {
@@ -308,7 +317,8 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private void refreshPreferences() {
-        refreshRate = Integer.parseInt(sharedPreferences.getString("sensor_refresh_rate", defaults.getRefreshRate()));
+        refreshRate = sharedPreferences.getInt("sensor_refresh_rate", defaults.getRefreshRate());
+
         ip = sharedPreferences.getString("ip", defaults.getHostname());
         port = sharedPreferences.getString("port", defaults.getPort());
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());
