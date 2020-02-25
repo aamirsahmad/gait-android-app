@@ -29,15 +29,6 @@
 
     <PreferenceCategory app:title="@string/sensor_header">
 
-        <!--        <EditTextPreference-->
-        <!--            app:key="sensor_refresh_rate"-->
-        <!--            app:title="@string/sensor_refresh_rate_title"-->
-        <!--            app:useSimpleSummaryProvider="true"-->
-        <!--            android:inputType="number"-->
-        <!--            android:defaultValue="@string/refresh_rate" />-->
-
-        <!--            app:defaultValue="52"-->
-
         <SeekBarPreference
             app:min="40"
             android:max="130"
