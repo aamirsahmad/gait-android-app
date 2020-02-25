@@ -36,10 +36,11 @@
         <!--            android:inputType="number"-->
         <!--            android:defaultValue="@string/refresh_rate" />-->
 
+        <!--            app:defaultValue="52"-->
+
         <SeekBarPreference
             app:min="40"
             android:max="130"
-            app:defaultValue="52"
             app:key="sensor_refresh_rate"
             app:title="@string/sensor_refresh_rate_title"
             app:adjustable="true"
