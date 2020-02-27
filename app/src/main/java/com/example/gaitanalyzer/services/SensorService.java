@@ -51,7 +51,7 @@ public class SensorService extends Service implements SensorEventListener {
     long rawAccelerometerEventsCount = 0;
     long accelerometerEventsCollected = 0;
     long prevAccelerometerEventCaptureTime = 0;
-    private int collectionRateMs;
+    private int collectionRateNs;
     SharedPreferences sharedPreferences;
     Defaults defaults;
 
@@ -132,9 +132,9 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private void computeCollectRateMs() {
-        this.collectionRateMs = (int) ((1.0/(double)this.sampling_rate) * 1000.0);
-        this.collectionRateMs--; // ensure correct result
-        Log.d(TAG, "computeCollectRateMs:  " + collectionRateMs);
+        this.collectionRateNs = (int) ((1.0/(double)this.sampling_rate) * 1000000000.0);
+        this.collectionRateNs -= 1000000;
+        Log.d(TAG, "computeCollectRateMs:  " + collectionRateNs);
 //        Log.d(TAG, "computeCollectRateMs: sampling rate " + this.sampling_rate);
     }
 
@@ -220,8 +220,9 @@ public class SensorService extends Service implements SensorEventListener {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 rawAccelerometerEventsCount++;
 
-                long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
-                if (prevAccelerometerEventCaptureTime == 0 || timeInMillis - prevAccelerometerEventCaptureTime >= collectionRateMs) {
+//                long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
+                long timeInMillis = System.currentTimeMillis() + (event.timestamp - SystemClock.elapsedRealtimeNanos()) / 1000000;
+                if (prevAccelerometerEventCaptureTime == 0 || event.timestamp - prevAccelerometerEventCaptureTime >= collectionRateNs) {
                     accelerometerEventsCollected++;
                     double vsum = Math.sqrt(
                             (event.values[0] * event.values[0])
@@ -229,7 +230,7 @@ public class SensorService extends Service implements SensorEventListener {
                                     + (event.values[2] * event.values[2])
                     );
 
-                    prevAccelerometerEventCaptureTime = timeInMillis;
+                    prevAccelerometerEventCaptureTime = event.timestamp;
                     Log.d(TAG, "date.getTime: " + timeInMillis);
 
                     String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
@@ -252,7 +253,7 @@ public class SensorService extends Service implements SensorEventListener {
 
                     int brokerSize = stream ? broker.getQueueSize() : -1;
                     if (logData != null) {
-                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateNs, socketMessage);
                     }
 
                     // ADD DATA TO BROKER
