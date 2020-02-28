@@ -104,6 +104,9 @@ public class MainActivity extends AppCompatActivity {
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false);
         defaults = new Defaults(this);
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+//        SharedPreferences.Editor editor = sharedPreferences.edit();
+//        editor.clear();
+//        editor.commit(); // commit changes
         refreshPreferences();
 
         PermissionHelper.getPermissionsFromAndroidOS(this);
@@ -152,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void refreshPreferences() {
-        refreshRate = Integer.parseInt(sharedPreferences.getString("sensor_refresh_rate", defaults.getRefreshRate()));
+//        refreshRate = sharedPreferences.getInt("sensor_refresh_rate", defaults.getRefreshRate());
         ip = sharedPreferences.getString("ip", defaults.getHostname());
         port = sharedPreferences.getString("port", defaults.getPort());
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());

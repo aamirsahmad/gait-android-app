@@ -51,7 +51,7 @@ public class SensorService extends Service implements SensorEventListener {
     long rawAccelerometerEventsCount = 0;
     long accelerometerEventsCollected = 0;
     long prevAccelerometerEventCaptureTime = 0;
-    private final int collectionRateMs = 19; // todo move to settings
+    private int collectionRateNs;
     SharedPreferences sharedPreferences;
     Defaults defaults;
 
@@ -78,7 +78,7 @@ public class SensorService extends Service implements SensorEventListener {
     private boolean timerRunning;
 
     private InfoCardData infoCardData;
-
+    private int sampling_rate;
 
     @Override
     public void onCreate() {
@@ -92,6 +92,8 @@ public class SensorService extends Service implements SensorEventListener {
         this.defaults = new Defaults(getApplicationContext());
         infoCardData = InfoCardData.getInstance();
         infoCardData.setUserID(sharedPreferences.getString("user_id", defaults.getUserId()));
+        sampling_rate = sharedPreferences.getInt("sensor_refresh_rate", defaults.getRefreshRate());
+        computeCollectRateMs();
         refreshPreferences();
         createRecordingFile();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -127,6 +129,13 @@ public class SensorService extends Service implements SensorEventListener {
         }
 
         return START_NOT_STICKY;
+    }
+
+    private void computeCollectRateMs() {
+        this.collectionRateNs = (int) ((1.0/(double)this.sampling_rate) * 1000000000.0);
+        this.collectionRateNs -= 1000000;
+        Log.d(TAG, "computeCollectRateMs:  " + collectionRateNs);
+//        Log.d(TAG, "computeCollectRateMs: sampling rate " + this.sampling_rate);
     }
 
     private void initStreaming() {
@@ -211,8 +220,9 @@ public class SensorService extends Service implements SensorEventListener {
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 rawAccelerometerEventsCount++;
 
-                long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
-                if (prevAccelerometerEventCaptureTime == 0 || timeInMillis - prevAccelerometerEventCaptureTime >= collectionRateMs) {
+//                long timeInMillis = System.currentTimeMillis() - SystemClock.elapsedRealtime() + (event.timestamp / 1000000L);
+                long timeInMillis = System.currentTimeMillis() + (event.timestamp - SystemClock.elapsedRealtimeNanos()) / 1000000;
+                if (prevAccelerometerEventCaptureTime == 0 || event.timestamp - prevAccelerometerEventCaptureTime >= collectionRateNs) {
                     accelerometerEventsCollected++;
                     double vsum = Math.sqrt(
                             (event.values[0] * event.values[0])
@@ -220,7 +230,7 @@ public class SensorService extends Service implements SensorEventListener {
                                     + (event.values[2] * event.values[2])
                     );
 
-                    prevAccelerometerEventCaptureTime = timeInMillis;
+                    prevAccelerometerEventCaptureTime = event.timestamp;
                     Log.d(TAG, "date.getTime: " + timeInMillis);
 
                     String accData = String.format("%d, %s, %d, %f, %f, %f, %f", accelerometerEventsCollected, userId, timeInMillis, event.values[0], event.values[1], event.values[2], vsum);
@@ -243,7 +253,7 @@ public class SensorService extends Service implements SensorEventListener {
 
                     int brokerSize = stream ? broker.getQueueSize() : -1;
                     if (logData != null) {
-                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateMs, socketMessage);
+                        updateLog(accData, brokerSize, rawAccelerometerEventsCount, collectionRateNs, socketMessage);
                     }
 
                     // ADD DATA TO BROKER
@@ -263,14 +273,14 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private void updateLog(String accData, int queueSize, long dataPointsCollected,
-                           int collectionRateMs, int messages) {
+                           int collectionRateNs, int messages) {
         /**
          * Accelerometer readings:
          * Current broker queue size:
          * Total data-points collected:
          * Current sampling frequency:
          */
-        int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
+        int frequency = TimeSeriesUtil.getFrequency(collectionRateNs);
         StringBuilder sb = new StringBuilder();
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
 
@@ -279,6 +289,8 @@ public class SensorService extends Service implements SensorEventListener {
         logData.setMessages(messages);
         logData.setDataPointsCollected(dataPointsCollected);
         logData.setFrequency(frequency);
+        logData.setCollectionRateMs(collectionRateNs/1000000);
+
     }
 
     void closePool() {
@@ -308,7 +320,8 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private void refreshPreferences() {
-        refreshRate = Integer.parseInt(sharedPreferences.getString("sensor_refresh_rate", defaults.getRefreshRate()));
+        refreshRate = sharedPreferences.getInt("sensor_refresh_rate", defaults.getRefreshRate());
+
         ip = sharedPreferences.getString("ip", defaults.getHostname());
         port = sharedPreferences.getString("port", defaults.getPort());
         stream = sharedPreferences.getBoolean("stream", defaults.getStream());
