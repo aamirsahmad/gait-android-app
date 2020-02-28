@@ -273,14 +273,14 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     private void updateLog(String accData, int queueSize, long dataPointsCollected,
-                           int collectionRateMs, int messages) {
+                           int collectionRateNs, int messages) {
         /**
          * Accelerometer readings:
          * Current broker queue size:
          * Total data-points collected:
          * Current sampling frequency:
          */
-        int frequency = TimeSeriesUtil.getFrequency(collectionRateMs);
+        int frequency = TimeSeriesUtil.getFrequency(collectionRateNs);
         StringBuilder sb = new StringBuilder();
         sb.append("index,userID,timeMs,accX,accY,accZ,vSum\n" + accData + "\n\n");
 
@@ -289,6 +289,8 @@ public class SensorService extends Service implements SensorEventListener {
         logData.setMessages(messages);
         logData.setDataPointsCollected(dataPointsCollected);
         logData.setFrequency(frequency);
+        logData.setCollectionRateMs(collectionRateNs/1000000);
+
     }
 
     void closePool() {
