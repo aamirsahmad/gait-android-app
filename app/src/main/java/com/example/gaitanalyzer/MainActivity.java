@@ -35,6 +35,8 @@ import java.io.FileNotFoundException;
 
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseButton;
 import me.zhanghai.android.materialplaypausedrawable.MaterialPlayPauseDrawable;
+import android.os.Handler;
+
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -214,11 +216,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startRecordingService(View v) {
-        wakeLock.acquire();
-        Intent serviceIntent = new Intent(this, SensorService.class);
-        serviceIntent.putExtra("msg", "Collecting gait data ...");
-        ContextCompat.startForegroundService(this, serviceIntent);
-        startChronometer();
+        final Handler handler = new Handler();
+        int delay = sharedPreferences.getInt("sensor_initial_delay", 0) * 1000;
+        Log.d(TAG, "startRecordingService.delay = " + delay);
+        startTime = SystemClock.elapsedRealtime();
+        chronometer.setBase(startTime);
+        chronometer.stop();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // Do something after 5s = 5000ms
+                wakeLock.acquire();
+                Intent serviceIntent = new Intent(MainActivity.this, SensorService.class);
+                serviceIntent.putExtra("msg", "Collecting gait data ...");
+                ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
+                startChronometer();
+            }
+        }, delay);
     }
 
     public void stopRecordingService(View v) {
