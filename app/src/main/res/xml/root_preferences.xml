@@ -39,6 +39,17 @@
             app:showSeekBarValue="true"
             />
 
+        <SeekBarPreference
+            app:min="0"
+            android:max="10"
+            app:key="sensor_initial_delay"
+            app:title="Sensor Initial Delay (s)"
+            app:adjustable="true"
+            app:isPreferenceVisible="true"
+            app:showSeekBarValue="true"
+            />
+
+
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/connection_header">
