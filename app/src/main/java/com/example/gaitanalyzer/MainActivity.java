@@ -216,6 +216,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startRecordingService(View v) {
+        recordingButton.setEnabled(false);
+        recordingButton.setClickable(false);
         final Handler handler = new Handler();
         int delay = sharedPreferences.getInt("sensor_initial_delay", 0) * 1000;
         Log.d(TAG, "startRecordingService.delay = " + delay);
@@ -231,6 +233,8 @@ public class MainActivity extends AppCompatActivity {
                 serviceIntent.putExtra("msg", "Collecting gait data ...");
                 ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
                 startChronometer();
+                recordingButton.setEnabled(true);
+                recordingButton.setClickable(true);
             }
         }, delay);
     }
